@@ -78,7 +78,37 @@ eulerpublisher container publish --repo openeuler/openeuler --version 22.03-LTS-
 上述执行的效果是向dockerhub([https://hub.docker.com](https://hub.docker.com))的`openeuler/openeuler`仓库发布由`Dockerfile`定制的tag为`22.03-LTS-SP1`的支持arm64、amd64多平台的openeuler容器镜像。
 
 ### 2. 发布cloud images
-待补充
+本部分介绍不同云商的云镜像构建及发布流程：
+#### AWS云镜像(AMI)发布
+使用`eulerpublisher`构建AMI时，需要预先使用`awscli`进行`aws configure`配置，完成身份认证，配置信息如下：
+```
+$ aws configure
+- AWS Access Key ID: <key_id>
+- AWS Secret Access Key: <secret_key>
+- Default region name: <region>
+```
+其中，`key_id`和`secret_key`是一对用于访问认证密钥对，生成方法参见[AWS管理访问密钥](https://docs.aws.amazon.com/zh_cn/IAM/latest/UserGuide/id_credentials_access-keys.html?icmpid=docs_iam_console#Using_CreateAccessKey)，`region`是执行构建AMI任务的域。
+-  **步骤1** 、AMI构建准备
+
+```
+eulerpublisher cloudimg prepare --version <VERSION> --arch <ARCH> --bucket <BUCKET> --region <REGION>
+```
+此命令中所有参数均需显式指定，`--version`是构建目标AMI的openEuler版本号，`--arch`指定构建AMI的架构类型，目前仅支持`aarch64`或`x86_86`，
+`--bucket`是存储桶名，存储桶用于保存`prepare`上传的原始`raw`镜像，`--region`为执行构建任务的域，`bucket`在该域内，其值与上述`aws configure`配置的`region`一致。
+
+执行此命令后，会在AWS对应`region`的`bucket`中出现一个命名为`openEuler-<VERSION>-<ARCH>.raw`的原始镜像。
+-  **步骤2** 、构建AMI
+
+```
+eulerpublisher cloudimg build --version <VERSION> --arch <ARCH> --bucket <BUCKET> --region <REGION>
+```
+此命令中所有参数均需显式指定，用法与`eulerpublisher cloudimg prepare`命令一致。`eulerpublisher`通过[aws_install.sh](/etc/cloudimg/script/aws_install.sh)实现定制AMI镜像的能力，目前默认的[aws_install.sh](/etc/cloudimg/script/aws_install.sh)满足构建得到的AMI符合AWS Marketplace AMI发布的要求。
+
+执行此命令后，会在AWS对应`region`的`EC2 AMI`列表中生成一个命名为`openEuler-<VERSION>-<ARCH>-<TIME>-hvm`的最终镜像（例如：`openEuler-22.03-LTS-SP2-x86_64-20230802_010324-hvm`）。
+
+-  **发布AMI到AWS Marketplace**
+
+**步骤2**生成的AMI满足AWS Marketplace云镜像发布的要求，如有需要可进行镜像产品发布。由于AWS Marketplace存在人工审核环节，无法通过自动化流程一键发布，用户需手动操作申请发布AMI，见[https://aws.amazon.com/marketplace](https://aws.amazon.com/marketplace/partners/management-tour)。
 
 ### 3. 发布WSL images
 待补充

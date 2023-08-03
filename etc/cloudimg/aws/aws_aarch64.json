@@ -1,0 +1,28 @@
+{
+    "builders": [
+        {
+            "type": "amazon-ebs",
+            "name": "amazon-ebs-hvm-arm64",
+            "region": "ap-southeast-2",
+            "ami_regions": [
+                "ap-southeast-2"
+            ],
+            "source_ami": "ami-0d5ef8271b14cba19",
+            "instance_type": "t4g.micro",
+            "ssh_username": "root",
+            "ssh_password": "openEuler12#$",
+            "ami_name": "openEuler-22.03-LTS-SP1-aarch6420230720_154945-hvm",
+            "ena_support": "true"
+        }
+    ],
+    "provisioners": [
+        {
+            "type": "shell",
+            "environment_vars": [
+                "VERSION=22.03-LTS-SP1",
+                "ARCH=aarch64"
+            ],
+            "script": "aws_install.sh"
+        }
+    ]
+}

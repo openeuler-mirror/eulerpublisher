@@ -1,3 +1,4 @@
+awscli
 click
 datetime
 docker-py
