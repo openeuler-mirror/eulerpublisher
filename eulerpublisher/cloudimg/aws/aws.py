@@ -11,17 +11,21 @@ import wget
 
 from botocore.exceptions import ClientError
 import eulerpublisher.publisher.publisher as pb
+from eulerpublisher.publisher import EP_PATH
+from eulerpublisher.publisher import OPENEULER_REPO
+
 
 ROLE_NAME = "vmimport"
 IMG_PATH = "/home/tmp/eulerpublisher/cloudimg/common/"
 
-CLOUD_DIR = os.path.dirname(os.__file__) + "/" + \
-    "../../etc/eulerpublisher/cloudimg/"
-ROLE_POLICY = CLOUD_DIR + "aws/role-policy.json"
-TRUST_POLICY = CLOUD_DIR + "aws/trust-policy.json"
+CLOUD_DIR = EP_PATH + "cloudimg/"
 PACKER_FILE_PATH = CLOUD_DIR + "aws/"
+ROLE_POLICY = PACKER_FILE_PATH + "role-policy.json"
+TRUST_POLICY = PACKER_FILE_PATH + "trust-policy.json"
+DEFAULT_RPMLIST = PACKER_FILE_PATH + "install_packages.txt"
+
 SCRIPT_PATH = CLOUD_DIR + "script/"
-ENA_KO = CLOUD_DIR + "aws/ena.ko"
+ENA_KO = PACKER_FILE_PATH + "ena.ko"
 COMMON_DATA_PATH = IMG_PATH
 
 
@@ -73,7 +77,7 @@ def _resize_cloudimg(arch, version):
     subprocess.call([script] + args)
 
 
-def _make_base_image(arch, version):
+def _make_base_image(arch, version, index):
     if not os.path.exists(COMMON_DATA_PATH):
         os.makedirs(COMMON_DATA_PATH, exist_ok=True)
     os.chdir(COMMON_DATA_PATH)
@@ -84,23 +88,28 @@ def _make_base_image(arch, version):
         if not os.path.exists(qcow2_file):
             if not os.path.exists(xz_file):
                 url = (
-                    "http://repo.openeuler.org/openEuler-"
-                    + version
-                    + "/virtual_machine_img/"
+                    OPENEULER_REPO
+                    + "openEuler-"
+                    + version + "/"
+                    + index
+                    + "/"
                     + arch
                     + "/"
                     + xz_file
                 )
                 try:
+                    click.echo("\nDownloading " + xz_file + "...")
                     wget.download(url)
                 except Exception as err:
-                    raise click.ClickException("[Prepare] " + err)
+                    raise click.ClickException("[Prepare] " + str(err))
             subprocess.call(["unxz", "-f", xz_file])
         _resize_cloudimg(arch=arch, version=version)
 
 
-def _create_packer(version, arch, region, img_name, source):
+def _create_packer(arch, region, img_name, source, rpmlist):
     file = PACKER_FILE_PATH + "aws_" + arch + ".json"
+    with open(rpmlist, "r") as rpms:
+        packages = rpms.read()
     with open(file, "r", encoding="utf-8-sig") as f:
         data = json.load(f)
     data["builders"][0]["region"] = region
@@ -108,8 +117,7 @@ def _create_packer(version, arch, region, img_name, source):
     data["builders"][0]["source_ami"] = source
     data["builders"][0]["ami_name"] = img_name + "-hvm"
     data["provisioners"][0]["environment_vars"] = [
-        "VERSION=" + version,
-        "ARCH=" + arch
+        "INSTALL_PACKAGES=" + packages
     ]
     data["provisioners"][0]["script"] = SCRIPT_PATH + "aws_install.sh"
     with open(file, "w", encoding="utf-8") as f:
@@ -117,12 +125,20 @@ def _create_packer(version, arch, region, img_name, source):
 
 
 class AwsPublisher(pb.Publisher):
-    def __init__(self, version, arch, bucket, region):
+    def __init__(self,
+                 version=None,
+                 arch=None,
+                 index=None,
+                 bucket=None, 
+                 region=None,
+                 rpmlist=None):
         # 关键参数
         self.img_name = "openEuler-" + version + "-" + arch
         self.version = version
         self.bucket = bucket
         self.region = region
+        self.index = index
+        # 获取支持的架构类型
         if arch != "x86_64" and arch != "aarch64":
             raise TypeError(
                 "Unsupported arch `%s`, "
@@ -130,6 +146,11 @@ class AwsPublisher(pb.Publisher):
                 % arch
             )
         self.arch = arch
+        # 获取要预安装的软件包列表，不显示指定时安装默认包
+        if not rpmlist:
+            self.rpmlist = DEFAULT_RPMLIST
+        else:
+            self.rpmlist = os.path.abspath(rpmlist)
         # check aws configure
         _check_credentials()
         # 创建S3客户端
@@ -141,7 +162,10 @@ class AwsPublisher(pb.Publisher):
 
     def prepare(self):
         # 获取基础镜像
-        _make_base_image(arch=self.arch, version=self.version)
+        _make_base_image(arch=self.arch,
+                         version=self.version,
+                         index=self.index
+        )
         # 上传镜像到S3存储
         key = self.img_name + ".raw"
         if not _find_object(self.s3_client, key, self.bucket):
@@ -185,7 +209,7 @@ class AwsPublisher(pb.Publisher):
                 PolicyDocument=role_policy.read(),
             )
         except ClientError as e:
-            raise click.ClickException(e)
+            raise click.ClickException(str(e))
 
         click.echo("[Prepare] finished.\n")
 
@@ -205,7 +229,7 @@ class AwsPublisher(pb.Publisher):
                 RoleName=ROLE_NAME,
             )
         except ClientError as e:
-            raise click.ClickException("\n[Prepare] " + e)
+            raise click.ClickException("\n[Prepare] " + str(e))
 
         # 循环查询snapshot导入是否完成，完成后获取其ID
         import_taskid = resp["ImportTaskId"]
@@ -240,14 +264,14 @@ class AwsPublisher(pb.Publisher):
         )
         image_id = resp["ImageId"]
 
-        # 3. packer build最终镜像，可通过install.sh定制
+        # 3. packer build最终镜像，可通过aws_install.sh定制
         _create_packer(
-            version=self.version,
             arch=self.arch,
             region=self.region,
             img_name=self.img_name + "-" +
                 datetime.datetime.now().strftime("%Y%m%d_%H%M%S"),
-            source=image_id
+            source=image_id,
+            rpmlist=self.rpmlist
         )
         try:
             subprocess.call([

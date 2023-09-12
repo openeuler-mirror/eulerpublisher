@@ -3,25 +3,46 @@ import click
 import datetime
 import docker
 import os
+import platform
 import re
 import shutil
 import subprocess
 import wget
+import yaml
+import time
+
 
 import eulerpublisher.publisher.publisher as pb
+from eulerpublisher.publisher import EP_PATH
+from eulerpublisher.publisher import OPENEULER_REPO
 
-DOCKERFILE_PATH = os.path.dirname(os.__file__) + '/' \
-    "../../etc/eulerpublisher/container/Dockerfile"
 CACHE_DATA_PATH = "/tmp/eulerpublisher/container/"
+DOCKERFILE_PATH = EP_PATH + "container/Dockerfile"
+TAGS = EP_PATH + "container/tags.yaml"
+
+# max time(sencond) to start docker
+START_TIMEOUT = 300
+# times to retry download
+RETRY_DOWNLOAD = 10
 
 
-# 运行容器，执行command命令，运行结果与预期结果param进行对比，返回成功 0/失败 1
+def _get_tags(registry, repo, key):
+    tags = "-t " + registry + "/" + repo + ":" + key.lower()
+    with open(TAGS, 'r') as f:
+        data = yaml.safe_load(f)
+    key = key.upper()
+    if key in data:
+        for tag in data[key]:
+            tags += " -t " + registry + "/" + repo + ":" + str(tag)
+    return tags
+
+
+# Run container and compare the result with 'param'
 def _run(tag="", cmd="", param=""):
     ret = pb.PUBLISH_FAILED
     client = docker.from_env()
     container = client.create_container(image=tag, command=cmd, detach=True)
     client.start(container)
-
     subprocess.call("docker logs " + container["Id"] + " >>logs.txt",
                     shell=True)
     logs = open("logs.txt")
@@ -34,21 +55,65 @@ def _run(tag="", cmd="", param=""):
     return ret
 
 
+# Start docker
+def _start_docker():
+    cnt = 0
+    if subprocess.call(['docker', 'info'], stdout = subprocess.PIPE, \
+            stderr = subprocess.STDOUT):
+        syst = platform.system()
+        if syst == "Darwin":
+            subprocess.call(['open', '-g', '-a', 'Docker'], \
+                stdout = subprocess.PIPE, stderr = subprocess.STDOUT)
+        elif syst == "Linux":
+            subprocess.call(['systemctl', 'start', 'docker'], \
+                stdout = subprocess.PIPE, stderr = subprocess.STDOUT)
+        else:
+            click.echo(click.style('\nUnsupported system %s.' \
+                % syst, fg="red"))
+        click.echo('Starting docker ...')
+    while subprocess.call(['docker', 'info'], stdout = subprocess.PIPE, \
+            stderr = subprocess.STDOUT):
+        if cnt >= START_TIMEOUT:
+            click.echo(click.style('\nFailed to start docker, ' \
+                'please ensure the docker is installed.', fg="red"))
+            return pb.PUBLISH_FAILED
+        time.sleep(5)
+        cnt += 5
+    return pb.PUBLISH_SUCCESS
+
+
+def _download(url):
+    retry_cnt = 0
+    while retry_cnt < RETRY_DOWNLOAD:
+        try:
+            wget.download(url)
+            return pb.PUBLISH_SUCCESS
+        except Exception as err:
+            click.echo(click.style(f"\nTry {retry_cnt+1}/{RETRY_DOWNLOAD}"\
+                " failure: " + str(err), fg="red"))
+            retry_cnt += 1
+    return pb.PUBLISH_FAILED
+
+
+# Class for publishing container images
 class ContainerPublisher(pb.Publisher):
     def __init__(self,
                  repo=None,
                  version=None,
                  registry=None,
+                 registry_url=None,
+                 index=None,
                  dockerfile=None):
         self.repo = repo
         self.version = version
         self.registry = registry
+        self.registry_url = registry_url
         self.dockerfile = dockerfile
+        self.index = index
         if not self.dockerfile:
             self.dockerfile = ""
 
     def prepare(self):
-        # 创建以版本号命名的目录
         os.makedirs(CACHE_DATA_PATH, exist_ok=True)
         os.chdir(CACHE_DATA_PATH)
         os.makedirs(self.version, exist_ok=True)
@@ -60,67 +125,33 @@ class ContainerPublisher(pb.Publisher):
                 docker_arch = "amd64"
             elif arch == "aarch64":
                 docker_arch = "arm64"
-
-            # 下载文件
-            if not os.path.exists("openEuler-docker." + arch + ".tar.xz"):
-                download_url = (
-                    "http://repo.openeuler.org/openEuler-"
-                    + self.version.upper()
-                    + "/docker_img/"
-                    + arch
-                    + "/openEuler-docker."
-                    + arch
-                    + ".tar.xz"
-                )
-                try:
-                    wget.download(download_url)
-                except Exception as err:
-                    click.echo(click.style('[Prepare]' + err, fg="red"))
+            # download base images
+            index = "openEuler-" + self.version.upper() + "/" + \
+                self.index + "/" + arch + "/"
+            file_name = "openEuler-docker." + arch + ".tar.xz"
+            if not os.path.exists(file_name): 
+                download_url = OPENEULER_REPO + index + file_name
+                if _download(download_url) != pb.PUBLISH_SUCCESS:
                     return pb.PUBLISH_FAILED
                 click.echo(
-                    "\n[Prepare] "
-                    + "Download openEuler-docker."
-                    + arch
-                    + ".tar.xz successfully."
+                    "\n[Prepare] Download %s successfully." % file_name
                 )
-
-            # 校验文件
-            subprocess.call(
-                ["rm", "-rf", "openEuler-docker." + arch + ".tar.xz.sha256sum"]
-            )
-            sha256sum_url = (
-                "http://repo.openeuler.org/openEuler-"
-                + self.version.upper()
-                + "/docker_img/"
-                + arch
-                + "/openEuler-docker."
-                + arch
-                + ".tar.xz.sha256sum"
-            )
-            try:
-                wget.download(sha256sum_url)
-            except Exception as err:
-                click.echo(click.style('\n[Prepare]' + err, fg="red"))
+            # check
+            sha256sum = file_name + ".sha256sum"
+            subprocess.call(["rm", "-rf", sha256sum])
+            sha256sum_url = OPENEULER_REPO + index + sha256sum
+            if _download(sha256sum_url) != pb.PUBLISH_SUCCESS:
                 return pb.PUBLISH_FAILED
-            click.echo(
-                "\n[Prepare] "
-                + "Download openEuler-docker."
-                + arch
-                + ".tar.xz.sha256sum successfully."
-            )
-            subprocess.call([
-                "shasum", "-c",
-                "openEuler-docker." + arch + ".tar.xz.sha256sum"
-            ])
-
-            # 获得rootfs文件
+            click.echo("\n[Prepare] Download %s successfully." % sha256sum)
+            subprocess.call(["shasum", "-c", sha256sum])
+            # get rootfs
             rootfs = "openEuler-docker-rootfs." + docker_arch + ".tar.xz"
             if os.path.exists(rootfs):
                 continue
             tar_cmd = [
                 "tar",
                 "-xf",
-                "openEuler-docker." + arch + ".tar.xz",
+                file_name,
                 "--exclude",
                 "layer.tar",
             ]
@@ -138,59 +169,45 @@ class ContainerPublisher(pb.Publisher):
 
     def build_and_push(self):
         os.chdir(CACHE_DATA_PATH)
-        # 如果指定了自定义dockerfile，则使用其进行构建
+        # to build with Dockerfile
         if os.path.exists(self.dockerfile):
             shutil.copy2(self.dockerfile, self.version + "/Dockerfile")
-
-        # 检查是否安装qemu,以支持多平台构建
-        if subprocess.call(["qemu-img", "--version"]) != 0:
+        # ensure that qemu is installed so that it can build multi-platform images
+        if subprocess.call(["qemu-img", "--version"], \
+                stdout = subprocess.PIPE,stderr = subprocess.STDOUT) != 0:
             click.echo(click.style(
                     "\n[Prepare] please install qemu first, \
                     you can use command <yum install qemu-img>.",
                     fg="red"
             ))
             return pb.PUBLISH_FAILED
-        # 登陆仓库
+        # ensure the docker is starting
+        if _start_docker() != pb.PUBLISH_SUCCESS:
+            return pb.PUBLISH_FAILED
+        # login registry
         username = os.environ["LOGIN_USERNAME"]
         password = os.environ["LOGIN_PASSWORD"]
-        if (
-            os.system(
-                "echo %s | docker login --username %s --password-stdin %s"
-                % (password, username, self.registry)
-            )
-            != 0
-        ):
+        if subprocess.call("echo %s | docker login --username %s --password-stdin %s"
+                % (password, username, self.registry_url), shell=True) != 0:
             return pb.PUBLISH_FAILED
-
-        # 考虑到docker API for python版本的差异，直接调用buildx命令实现多平台镜像构建
+        # to build mutil-platform images with 'buildx'
         builder_name = "euler_builder_" + datetime.datetime.now().strftime(
             "%Y%m%d_%H%M%S"
         )
-        if (
-            subprocess.call(
-                ["docker", "buildx", "create", "--use", "--name", builder_name]
-            )
-            != 0
-        ):
+        if subprocess.call([
+            "docker", "buildx", "create", "--use", "--name", builder_name
+        ],) != 0:
             return pb.PUBLISH_FAILED
-        # build并push docker image
+        # build and push docker image
         os.chdir(self.version)
-        if (
-            subprocess.call(
-                [
-                    "docker",
-                    "buildx",
-                    "build",
-                    "--platform",
-                    "linux/arm64,linux/amd64",
-                    "-t",
-                    self.repo + ":" + self.version,
-                    "--push",
-                    ".",
-                ]
-            )
-            != 0
-        ):
+        if subprocess.call(
+            "docker buildx build " + \
+            "--platform linux/arm64,linux/amd64 " + \
+            _get_tags(self.registry, self.repo, self.version) + \
+            " --push " + \
+            ".",
+            shell=True
+        )!= 0:
             return pb.PUBLISH_FAILED
         subprocess.call(["docker", "buildx", "stop", builder_name])
         subprocess.call(["docker", "buildx", "rm", builder_name])
@@ -198,16 +215,15 @@ class ContainerPublisher(pb.Publisher):
         click.echo("[Push] finished")
         return pb.PUBLISH_SUCCESS
 
-    # 对已构建的镜像进行测试，多平台镜像无法保存在本地，需要先从仓库pull后再执行测试过程
+    # To test the new image，you should first pull it
     def check(self):
         result = pb.PUBLISH_SUCCESS
         client = docker.from_env()
-        image_tag = self.repo + ":" + self.version
+        image_tag = self.registry + "/" + self.repo + ":" + self.version
         image = client.images(name=image_tag)
         if image == []:
             click.echo("Pulling " + image_tag + "...")
             client.pull(image_tag)
-
         # check basic information of new image
         image = client.images(name=image_tag)
         image_info = client.inspect_image(image[0]["Id"])
@@ -239,8 +255,9 @@ class ContainerPublisher(pb.Publisher):
         click.echo("[Check] finished")
         return result
 
-    # 一键发布
+    # Publish with one click
     def publish(self):
+        click.echo("\n[Publish] start to publish openEuler-" + self.version + '...')
         if self.prepare() != pb.PUBLISH_SUCCESS:
             click.echo(click.style(
                 "[Publish] Download failed.", fg="red"

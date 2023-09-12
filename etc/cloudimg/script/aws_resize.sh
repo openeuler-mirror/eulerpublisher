@@ -22,6 +22,7 @@ if [[ ! -z "${nbd_loaded}" ]]; then
     sudo qemu-nbd -d "${DEV_NUM}"
 fi
 sudo qemu-nbd -c "${DEV_NUM}" "${TMP_DATA_PATH}${OPENEULER_IMG}.qcow2"
+sudo e2fsck -fy ${DEV_NUM}p2 
 sudo resize2fs ${DEV_NUM}p2 6G
 sudo sync
 

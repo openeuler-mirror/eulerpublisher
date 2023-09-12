@@ -19,8 +19,7 @@
         {
             "type": "shell",
             "environment_vars": [
-                "VERSION=22.03-LTS-SP1",
-                "ARCH=aarch64"
+                "INSTALL_PACKAGES="
             ],
             "script": "aws_install.sh"
         }

@@ -13,7 +13,7 @@ python setup.py install
 
 
 ## 环境依赖
-1.`eulerpublisher`实现多平台docker镜像构建功能依赖于docker和qemu，安装方式如下：
+1.`eulerpublisher`实现多平台容器镜像构建功能依赖于docker和qemu，安装方式如下：
 
 ```
 yum install qemu-img
@@ -36,13 +36,13 @@ pip install -r ./requirement.txt
 ## 使用说明
 
 ### 1. 发布container images
-本部分介绍如何使用eulerpublisher发布多平台（支持amd64和arm64）openeuler容器镜像。
+本部分介绍如何使用eulerpublisher发布多平台（支持amd64和arm64）openeuler容器镜像。eulerpublisher以[openeuler](https://repo.openeuler.org)官方发布的容器镜像为基础，进行二次定制后发布至第三方仓库。
 -  **步骤1** 、获取container image构建的必要文件
 
 ```
-eulerpublisher container prepare --version <VERSION>
+eulerpublisher container prepare --version <VERSION> --index <INDEX>
 ```
-  这个命令中`--version`是必需的，用于获取对应版本的构建所需文件。
+  这个命令中`--version`必须显式指定，用于获取对应版本的构建所需文件。 `--index`指定基础镜像的路径，可选`docker_img`或`docker_img/update/Y-M-D`, 选择`docker_img`表明取openeuler的`release`版本作为基础镜像、选择`docker_img/update/Y-M-D`表明取`update`版本作为基础镜像，不显式指定时默认取`release`版本作为基础镜像。
 
 -  **步骤2** 、构建container image并push到目标仓库
 
@@ -55,7 +55,7 @@ export LOGIN_PASSWORD="password"
 ```
 eulerpublisher container push --repo <REPO> --version <VERSION> --registry <REGISTRY> --dockerfile <Dockerfile>
 ```
-  此命令中，`--repo`和`--version`必须显式指定，`--registry`不显式指定时默认指向dockerhub ([https://hub.docker.com](https://hub.docker.com))，`--dockerfile`指定自定义dockerfile的绝对路径，不显式指定时使用默认[Dockerfile](/etc/container/Dockerfile)。由于`container builds build`构建的多平台image无法在本地缓存，build的时候必须同步push到对应repo（可以是私有的）。因此，有测试需求的情况下，尽量先将构建的container image push到私有仓库验证完成后再publish到最终目标仓库。
+  此命令中，`--repo`和`--version`必须显式指定，`--registry`不显式指定时默认指向dockerhub ([https://hub.docker.com](https://hub.docker.com))，`--dockerfile`指定自定义dockerfile的绝对路径，不显式指定时使用默认[Dockerfile](/etc/container/Dockerfile)。由于`docker builds build`构建的多平台image无法在本地缓存，build的时候必须同步push到对应repo（可以是私有的）。因此，有测试需求的情况下，尽量先将构建的container image push到私有仓库验证完成后再publish到最终目标仓库。
 
 -  **步骤3** 、测试container image
 
@@ -68,14 +68,14 @@ eulerpublisher container check --repo <REPO> --version <VERSION> --registry <REG
 - **一键发布**
 
 ```
-eulerpublisher container publish --repo <REPO> --version <VERSION> --registry <REGISTRY> --dockerfile <Dockerfile>
+eulerpublisher container publish --repo <REPO> --version <VERSION> --index <INDEX> --registry <REGISTRY> --dockerfile <Dockerfile>
 ```
   此命令是上述**步骤**1～2的顺序功能集合，每个参数的含义与上述相同。使用示例如下
 ```
 示例：
 eulerpublisher container publish --repo openeuler/openeuler --version 22.03-LTS-SP1 --registry registry-1.docker.io --dockerfile Dockerfile
 ```
-上述执行的效果是向dockerhub([https://hub.docker.com](https://hub.docker.com))的`openeuler/openeuler`仓库发布由`Dockerfile`定制的tag为`22.03-LTS-SP1`的支持arm64、amd64多平台的openeuler容器镜像。
+上述执行的效果是向dockerhub([https://hub.docker.com](https://hub.docker.com))的`openeuler/openeuler`仓库发布由`Dockerfile`定制的tag为`22.03-LTS-SP1`的支持arm64、amd64多平台的openeuler容器镜像, 基础镜像来自于`22.03-LTS-SP1`的`release`版本。
 
 ### 2. 发布cloud images
 本部分介绍不同云商的云镜像构建及发布流程：
@@ -87,22 +87,22 @@ $ aws configure
 - AWS Secret Access Key: <secret_key>
 - Default region name: <region>
 ```
-其中，`key_id`和`secret_key`是一对用于访问认证密钥对，生成方法参见[AWS管理访问密钥](https://docs.aws.amazon.com/zh_cn/IAM/latest/UserGuide/id_credentials_access-keys.html?icmpid=docs_iam_console#Using_CreateAccessKey)，`region`是执行构建AMI任务的域。
+其中，`key_id`和`secret_key`是一对用于访问认证的密钥对，生成方法参见[AWS管理访问密钥](https://docs.aws.amazon.com/zh_cn/IAM/latest/UserGuide/id_credentials_access-keys.html?icmpid=docs_iam_console#Using_CreateAccessKey)，`region`是执行构建AMI任务的域。
 -  **步骤1** 、AMI构建准备
 
 ```
-eulerpublisher cloudimg prepare --version <VERSION> --arch <ARCH> --bucket <BUCKET> --region <REGION>
+eulerpublisher cloudimg aws prepare --version <VERSION> --arch <ARCH> --bucket <BUCKET> --region <REGION>
 ```
 此命令中所有参数均需显式指定，`--version`是构建目标AMI的openEuler版本号，`--arch`指定构建AMI的架构类型，目前仅支持`aarch64`或`x86_86`，
 `--bucket`是存储桶名，存储桶用于保存`prepare`上传的原始`raw`镜像，`--region`为执行构建任务的域，`bucket`在该域内，其值与上述`aws configure`配置的`region`一致。
 
-执行此命令后，会在AWS对应`region`的`bucket`中出现一个命名为`openEuler-<VERSION>-<ARCH>.raw`的原始镜像。
+执行此命令后，会在AWS对应`region`的`bucket`中出现一个命名为`openEuler-<VERSION>-<ARCH>.raw`的原始镜像（例如：openEuler-22.03-LTS-SP2-x86_64.raw）。
 -  **步骤2** 、构建AMI
 
 ```
-eulerpublisher cloudimg build --version <VERSION> --arch <ARCH> --bucket <BUCKET> --region <REGION>
+eulerpublisher cloudimg aws build --version <VERSION> --arch <ARCH> --bucket <BUCKET> --region <REGION>
 ```
-此命令中所有参数均需显式指定，用法与`eulerpublisher cloudimg prepare`命令一致。`eulerpublisher`通过[aws_install.sh](/etc/cloudimg/script/aws_install.sh)实现定制AMI镜像的能力，目前默认的[aws_install.sh](/etc/cloudimg/script/aws_install.sh)满足构建得到的AMI符合AWS Marketplace AMI发布的要求。
+此命令中所有参数均需显式指定，参数作用与`eulerpublisher cloudimg aws prepare`命令一致。`eulerpublisher`通过[aws_install.sh](/etc/cloudimg/script/aws_install.sh)实现定制AMI镜像的能力，目前默认的[aws_install.sh](/etc/cloudimg/script/aws_install.sh)满足构建得到的AMI符合AWS Marketplace AMI发布的要求。
 
 执行此命令后，会在AWS对应`region`的`EC2 AMI`列表中生成一个命名为`openEuler-<VERSION>-<ARCH>-<TIME>-hvm`的最终镜像（例如：`openEuler-22.03-LTS-SP2-x86_64-20230802_010324-hvm`）。
 

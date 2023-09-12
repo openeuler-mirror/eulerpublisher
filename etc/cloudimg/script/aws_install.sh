@@ -2,11 +2,13 @@
 set -e
 
 yum -y update
+# the packages must be installed
 yum -y install cloud-init cloud-utils-growpart gdisk
-yum -y install vim tar make zip gzip wget git tmux \
-    conntrack-tools socat iptables-services htop
 
-# # disable PasswordAuth
+# install packages
+yum -y install $INSTALL_PACKAGES
+
+# disable PasswordAuth
 sed -i '/PasswordAuthentication/s/^/# /' /etc/ssh/sshd_config
 sed -i '$a\PasswordAuthentication no'    /etc/ssh/sshd_config
 
