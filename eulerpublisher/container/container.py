@@ -19,18 +19,21 @@ CACHE_DATA_PATH = "/tmp/eulerpublisher/container/"
 def _run(tag="", cmd="", param=""):
     ret = pb.PUBLISH_FAILED
     client = docker.from_env()
-    container = client.create_container(image=tag, command=cmd, detach=True)
-    client.start(container)
+    try:
+        container = client.create_container(image=tag, command=cmd, detach=True)
+        client.start(container)
 
-    subprocess.call("docker logs " + container["Id"] + " >>logs.txt",
-                    shell=True)
-    logs = open("logs.txt")
-    for line in logs:
-        if param in line:
-            ret = pb.PUBLISH_SUCCESS
-    logs.close()
-    subprocess.call(["rm", "-rf", "logs.txt"])
-    client.stop(container)
+        subprocess.call("docker logs " + container["Id"] + " >>logs.txt",
+                        shell=True)
+        logs = open("logs.txt")
+        for line in logs:
+            if param in line:
+                ret = pb.PUBLISH_SUCCESS
+        logs.close()
+        subprocess.call(["rm", "-rf", "logs.txt"])
+        client.stop(container)
+    except docker.errors.DockerException as err:
+        click.echo(click.style(f"[run_container] {err}", fg="red"))
     return ret
 
 
@@ -137,106 +140,113 @@ class ContainerPublisher(pb.Publisher):
         return pb.PUBLISH_SUCCESS
 
     def build_and_push(self):
-        os.chdir(CACHE_DATA_PATH)
-        # 如果指定了自定义dockerfile，则使用其进行构建
-        if os.path.exists(self.dockerfile):
-            shutil.copy2(self.dockerfile, self.version + "/Dockerfile")
+        try:
+            os.chdir(CACHE_DATA_PATH)
+            # 如果指定了自定义dockerfile，则使用其进行构建
+            if os.path.exists(self.dockerfile):
+                shutil.copy2(self.dockerfile, self.version + "/Dockerfile")
 
-        # 检查是否安装qemu,以支持多平台构建
-        if subprocess.call(["qemu-img", "--version"]) != 0:
-            click.echo(click.style(
-                    "\n[Prepare] please install qemu first, \
-                    you can use command <yum install qemu-img>.",
-                    fg="red"
-            ))
-            return pb.PUBLISH_FAILED
-        # 登陆仓库
-        username = os.environ["LOGIN_USERNAME"]
-        password = os.environ["LOGIN_PASSWORD"]
-        if (
-            os.system(
-                "echo %s | docker login --username %s --password-stdin %s"
-                % (password, username, self.registry)
-            )
-            != 0
-        ):
-            return pb.PUBLISH_FAILED
+            # 检查是否安装qemu,以支持多平台构建
+            if subprocess.call(["qemu-img", "--version"]) != 0:
+                click.echo(click.style(
+                        "\n[Prepare] please install qemu first, \
+                        you can use command <yum install qemu-img>.",
+                        fg="red"
+                ))
+                return pb.PUBLISH_FAILED
+            # 登陆仓库
+            username = os.environ["LOGIN_USERNAME"]
+            password = os.environ["LOGIN_PASSWORD"]
+            if (
+                os.system(
+                    "echo %s | docker login --username %s --password-stdin %s"
+                    % (password, username, self.registry)
+                )
+                != 0
+            ):
+                return pb.PUBLISH_FAILED
 
-        # 考虑到docker API for python版本的差异，直接调用buildx命令实现多平台镜像构建
-        builder_name = "euler_builder_" + datetime.datetime.now().strftime(
-            "%Y%m%d_%H%M%S"
-        )
-        if (
-            subprocess.call(
-                ["docker", "buildx", "create", "--use", "--name", builder_name]
+            # 考虑到docker API for python版本的差异，直接调用buildx命令实现多平台镜像构建
+            builder_name = "euler_builder_" + datetime.datetime.now().strftime(
+                "%Y%m%d_%H%M%S"
             )
-            != 0
-        ):
-            return pb.PUBLISH_FAILED
-        # build并push docker image
-        os.chdir(self.version)
-        if (
-            subprocess.call(
-                [
-                    "docker",
-                    "buildx",
-                    "build",
-                    "--platform",
-                    "linux/arm64,linux/amd64",
-                    "-t",
-                    self.repo + ":" + self.version,
-                    "--push",
-                    ".",
-                ]
-            )
-            != 0
-        ):
-            return pb.PUBLISH_FAILED
-        subprocess.call(["docker", "buildx", "stop", builder_name])
-        subprocess.call(["docker", "buildx", "rm", builder_name])
+            if (
+                subprocess.call(
+                    ["docker", "buildx", "create", "--use", "--name", builder_name]
+                )
+                != 0
+            ):
+                return pb.PUBLISH_FAILED
+            # build并push docker image
+            os.chdir(self.version)
+            if (
+                subprocess.call(
+                    [
+                        "docker",
+                        "buildx",
+                        "build",
+                        "--platform",
+                        "linux/arm64,linux/amd64",
+                        "-t",
+                        self.repo + ":" + self.version,
+                        "--push",
+                        ".",
+                    ]
+                )
+                != 0
+            ):
+                return pb.PUBLISH_FAILED
+            subprocess.call(["docker", "buildx", "stop", builder_name])
+            subprocess.call(["docker", "buildx", "rm", builder_name])
 
-        click.echo("[Push] finished")
+            click.echo("[Push] finished")
+        except (OSError, subprocess.CalledProcessError) as err:
+            click.echo(click.style(f"[Build and Push] {err}", fg="red"))
+            return pb.PUBLISH_FAILED
         return pb.PUBLISH_SUCCESS
 
     # 对已构建的镜像进行测试，多平台镜像无法保存在本地，需要先从仓库pull后再执行测试过程
     def check(self):
         result = pb.PUBLISH_SUCCESS
-        client = docker.from_env()
-        image_tag = self.repo + ":" + self.version
-        image = client.images(name=image_tag)
-        if image == []:
-            click.echo("Pulling " + image_tag + "...")
-            client.pull(image_tag)
+        try:
+            client = docker.from_env()
+            image_tag = self.repo + ":" + self.version
+            image = client.images(name=image_tag)
+            if image == []:
+                click.echo("Pulling " + image_tag + "...")
+                client.pull(image_tag)
 
-        # check basic information of new image
-        image = client.images(name=image_tag)
-        image_info = client.inspect_image(image[0]["Id"])
-        for tag in image[0]["RepoTags"]:
-            if tag == image_tag:
-                # check OS type
-                if image_info["Os"] != "linux":
-                    click.echo(click.style(
-                        "[Check] OS type <%s> is unknown." % image_info["Os"],
-                        fg="red"
-                    ))
-                    result = pb.PUBLISH_FAILED
-                # check platform type
-                if image_info["Architecture"] != "amd64" and \
-                   image_info["Architecture"] != "arm64":
-                    click.echo(click.style(
-                        "[Check] Architecture <%s> is not expected." %
-                        image_info["Architecture"],
-                        fg="red"
-                    ))
-                    result = pb.PUBLISH_FAILED
+            # check basic information of new image
+            image = client.images(name=image_tag)
+            image_info = client.inspect_image(image[0]["Id"])
+            for tag in image[0]["RepoTags"]:
+                if tag == image_tag:
+                    # check OS type
+                    if image_info["Os"] != "linux":
+                        click.echo(click.style(
+                            "[Check] OS type <%s> is unknown." % image_info["Os"],
+                            fg="red"
+                        ))
+                        result = pb.PUBLISH_FAILED
+                    # check platform type
+                    if image_info["Architecture"] != "amd64" and \
+                    image_info["Architecture"] != "arm64":
+                        click.echo(click.style(
+                            "[Check] Architecture <%s> is not expected." %
+                            image_info["Architecture"],
+                            fg="red"
+                        ))
+                        result = pb.PUBLISH_FAILED
 
-        # test time zone settings
-        if _run(tag=image_tag, cmd="date", param="UTC") != pb.PUBLISH_SUCCESS:
-            click.echo(click.style(
-                "[Check] time zone setting is not UTC", fg="red"
-            ))
-            result = pb.PUBLISH_FAILED
-        click.echo("[Check] finished")
+            # test time zone settings
+            if _run(tag=image_tag, cmd="date", param="UTC") != pb.PUBLISH_SUCCESS:
+                click.echo(click.style(
+                    "[Check] time zone setting is not UTC", fg="red"
+                ))
+                result = pb.PUBLISH_FAILED
+            click.echo("[Check] finished")
+        except docker.errors.DockerException as err:
+            click.echo(click.style(f"[Check] {err}", fg="red"))
         return result
 
     # 一键发布
