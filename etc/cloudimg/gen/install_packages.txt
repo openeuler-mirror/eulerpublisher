@@ -1,0 +1,6 @@
+gdisk
+wget
+tar
+hostname
+unzip
+make

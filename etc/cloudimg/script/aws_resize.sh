@@ -27,7 +27,7 @@ sudo resize2fs ${DEV_NUM}p2 6G
 sudo sync
 
 # Add some timeout to avoid device busy error
-sleep 1
+sleep 3
 
 # Reset fdisk error status
 sed -e 's/\s*\([\+0-9a-zA-Z]*\).*/\1/' << EOF | sudo fdisk ${DEV_NUM}
@@ -45,27 +45,27 @@ sed -e 's/\s*\([\+0-9a-zA-Z]*\).*/\1/' << EOF | sudo fdisk ${DEV_NUM}
 EOF
 
 sudo sync
-sleep 1
+sleep 3
 
 # Insert ena.ko when boots
 if [[ "$2" == "aarch64" ]]; then
-    mkdir -p /mnt/nbd0
-    sudo mount ${DEV_NUM}p2 /mnt/nbd0
+    mkdir -p ${MOUNT_DIR}
+    sudo mount ${DEV_NUM}p2 ${MOUNT_DIR}
     sudo rm -f ${TMP_DATA_PATH}ena.txt
-    sudo find /mnt/nbd0/usr/lib/modules/ -name ena.ko.xz > ${TMP_DATA_PATH}ena.txt
+    sudo find ${MOUNT_DIR}/usr/lib/modules/ -name ena.ko.xz > ${TMP_DATA_PATH}ena.txt
     # if ena.ko is not found within current image, copy from external
     if [ -z "${TMP_DATA_PATH}ena.txt" ]; then  
-        sudo cp -f ${TMP_DATA_PATH}ena.ko /mnt/nbd0/root/
+        sudo cp -f ${TMP_DATA_PATH}ena.ko ${MOUNT_DIR}/root/
     else  
-        sudo cp -f $(cat ${TMP_DATA_PATH}ena.txt | head -n 1) /mnt/nbd0/root/
-        sudo unxz -f /mnt/nbd0/root/ena.ko.xz
+        sudo cp -f $(cat ${TMP_DATA_PATH}ena.txt | head -n 1) ${MOUNT_DIR}/root/
+        sudo unxz -f ${MOUNT_DIR}/root/ena.ko.xz
     fi
-    sudo bash -c ' echo "install ena insmod /root/ena.ko" >> /mnt/nbd0/etc/modprobe.d/ena.conf '
-    sudo bash -c ' echo "ena" >> /mnt/nbd0/etc/modules-load.d/ena.conf '
+    sudo bash -c ' echo "install ena insmod /root/ena.ko" >> ${MOUNT_DIR}/etc/modprobe.d/ena.conf '
+    sudo bash -c ' echo "ena" >> ${MOUNT_DIR}/etc/modules-load.d/ena.conf '
     sudo sync
-    sudo umount /mnt/nbd0
+    sudo umount ${MOUNT_DIR}
 fi
 
 sudo qemu-nbd -d ${DEV_NUM}
-qemu-img resize ${OPENEULER_IMG}.qcow2 --shrink 8G
-qemu-img convert ${OPENEULER_IMG}.qcow2 ${OPENEULER_IMG}.raw
+qemu-img resize ${TMP_DATA_PATH}${OPENEULER_IMG}.qcow2 --shrink 8G
+qemu-img convert ${TMP_DATA_PATH}${OPENEULER_IMG}.qcow2 ${OPENEULER_IMG}.raw

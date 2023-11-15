@@ -6,8 +6,10 @@ import json
 import shutil
 import subprocess
 import os
+import platform
 import time
 import wget
+
 
 from botocore.exceptions import ClientError
 import eulerpublisher.publisher.publisher as pb
@@ -16,17 +18,13 @@ from eulerpublisher.publisher import OPENEULER_REPO
 
 
 ROLE_NAME = "vmimport"
-IMG_PATH = "/home/tmp/eulerpublisher/cloudimg/common/"
-
-CLOUD_DIR = EP_PATH + "cloudimg/"
-PACKER_FILE_PATH = CLOUD_DIR + "aws/"
+SCRIPT_PATH = EP_PATH + "cloudimg/script/"
+PACKER_FILE_PATH = EP_PATH + "cloudimg/aws/"
 ROLE_POLICY = PACKER_FILE_PATH + "role-policy.json"
 TRUST_POLICY = PACKER_FILE_PATH + "trust-policy.json"
 DEFAULT_RPMLIST = PACKER_FILE_PATH + "install_packages.txt"
-
-SCRIPT_PATH = CLOUD_DIR + "script/"
 ENA_KO = PACKER_FILE_PATH + "ena.ko"
-COMMON_DATA_PATH = IMG_PATH
+AWS_DATA_PATH = "/home/tmp/eulerpublisher/cloudimg/data/aws/"
 
 
 def _check_credentials():
@@ -71,16 +69,16 @@ def _create_policy(bucket=""):
 
 
 def _resize_cloudimg(arch, version):
-    shutil.copy2(ENA_KO, COMMON_DATA_PATH)
+    shutil.copy2(ENA_KO, AWS_DATA_PATH)
     script = SCRIPT_PATH + "aws_resize.sh"
-    args = [version, arch, COMMON_DATA_PATH]
-    subprocess.call([script] + args)
+    args = [version, arch, AWS_DATA_PATH]
+    subprocess.call(["sudo", "sh", script] + args)
 
 
-def _make_base_image(arch, version, index):
-    if not os.path.exists(COMMON_DATA_PATH):
-        os.makedirs(COMMON_DATA_PATH, exist_ok=True)
-    os.chdir(COMMON_DATA_PATH)
+def _make_base_image(arch, version):
+    if not os.path.exists(AWS_DATA_PATH):
+        os.makedirs(AWS_DATA_PATH, exist_ok=True)
+    os.chdir(AWS_DATA_PATH)
     raw_file = "openEuler-" + version + "-" + arch + ".raw"
     qcow2_file = "openEuler-" + version + "-" + arch + ".qcow2"
     xz_file = "openEuler-" + version + "-" + arch + ".qcow2.xz"
@@ -91,7 +89,7 @@ def _make_base_image(arch, version, index):
                     OPENEULER_REPO
                     + "openEuler-"
                     + version + "/"
-                    + index
+                    + "virtual_machine_img"
                     + "/"
                     + arch
                     + "/"
@@ -126,24 +124,22 @@ def _create_packer(arch, region, img_name, source, rpmlist):
 
 class AwsPublisher(pb.Publisher):
     def __init__(self,
-                 version=None,
-                 arch=None,
-                 index=None,
-                 bucket=None, 
-                 region=None,
-                 rpmlist=None):
+                 version="",
+                 arch="",
+                 bucket="", 
+                 region="",
+                 rpmlist=""):
         # 关键参数
         self.img_name = "openEuler-" + version + "-" + arch
         self.version = version
         self.bucket = bucket
         self.region = region
-        self.index = index
         # 获取支持的架构类型
-        if arch != "x86_64" and arch != "aarch64":
+        if arch != str(platform.machine()):
             raise TypeError(
-                "Unsupported arch `%s`, "
-                "only x86_64 and aarch64 are supported."
-                % arch
+                "Unsupported architecture " + arch + \
+                ", while current host architecture is " + \
+                str(platform.machine())
             )
         self.arch = arch
         # 获取要预安装的软件包列表，不显示指定时安装默认包
@@ -163,8 +159,7 @@ class AwsPublisher(pb.Publisher):
     def prepare(self):
         # 获取基础镜像
         _make_base_image(arch=self.arch,
-                         version=self.version,
-                         index=self.index
+                         version=self.version
         )
         # 上传镜像到S3存储
         key = self.img_name + ".raw"
@@ -177,7 +172,7 @@ class AwsPublisher(pb.Publisher):
                     "aws",
                     "s3",
                     "cp",
-                    IMG_PATH + key,
+                    AWS_DATA_PATH + key,
                     "s3://" + self.bucket + "/" + key
                 ])
             except Exception:
@@ -229,7 +224,7 @@ class AwsPublisher(pb.Publisher):
                 RoleName=ROLE_NAME,
             )
         except ClientError as e:
-            raise click.ClickException("\n[Prepare] " + str(e))
+            raise click.ClickException("\n[Build] " + str(e))
 
         # 循环查询snapshot导入是否完成，完成后获取其ID
         import_taskid = resp["ImportTaskId"]

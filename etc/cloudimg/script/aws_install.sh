@@ -39,6 +39,6 @@ echo "GRUB_CMDLINE_LINUX_DEFAULT=\"apparmor=0\"" >> /etc/default/grub
 # Update grub config
 if [[ "$(uname -m)" == "x86_64" ]]; then
     grub2-mkconfig -o /boot/grub2/grub.cfg
-elif [[ "$(uname -m)" == "arm64" ]]; then
+elif [[ "$(uname -m)" == "aarch64" ]]; then
     grub2-mkconfig -o /boot/efi/EFI/openEuler/grub.cfg
 fi
