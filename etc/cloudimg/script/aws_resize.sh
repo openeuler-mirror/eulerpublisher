@@ -53,9 +53,9 @@ if [[ "$2" == "aarch64" ]]; then
     sudo mount ${DEV_NUM}p2 ${MOUNT_DIR}
     sudo rm -f ${TMP_DATA_PATH}ena.txt
     sudo find ${MOUNT_DIR}/usr/lib/modules/ -name ena.ko.xz > ${TMP_DATA_PATH}ena.txt
-    # if ena.ko is not found within current image, copy from external
+    # if ena.ko is not found throw error
     if [ -z "${TMP_DATA_PATH}ena.txt" ]; then  
-        sudo cp -f ${TMP_DATA_PATH}ena.ko ${MOUNT_DIR}/root/
+        echo "ena.ko is needed!"
     else  
         sudo cp -f $(cat ${TMP_DATA_PATH}ena.txt | head -n 1) ${MOUNT_DIR}/root/
         sudo unxz -f ${MOUNT_DIR}/root/ena.ko.xz

@@ -23,7 +23,6 @@ PACKER_FILE_PATH = EP_PATH + "cloudimg/aws/"
 ROLE_POLICY = PACKER_FILE_PATH + "role-policy.json"
 TRUST_POLICY = PACKER_FILE_PATH + "trust-policy.json"
 DEFAULT_RPMLIST = PACKER_FILE_PATH + "install_packages.txt"
-ENA_KO = PACKER_FILE_PATH + "ena.ko"
 AWS_DATA_PATH = "/home/tmp/eulerpublisher/cloudimg/data/aws/"
 
 
@@ -69,7 +68,6 @@ def _create_policy(bucket=""):
 
 
 def _resize_cloudimg(arch, version):
-    shutil.copy2(ENA_KO, AWS_DATA_PATH)
     script = SCRIPT_PATH + "aws_resize.sh"
     args = [version, arch, AWS_DATA_PATH]
     subprocess.call(["sudo", "sh", script] + args)
