@@ -1,0 +1,22 @@
+# 记录发布容器镜像的仓库登录信息
+
+# 每一项的内容：
+# 仓库名
+# - 登录名
+# - 登录密码
+# - 发布镜像的repo
+
+docker.io:
+  - LOGIN_DOCKER_USER
+  - LOGIN_DOCKER_PASSWD
+  - docker.io/openeuler/openeuler
+
+quay.io:
+  - LOGIN_QUAY_USER
+  - LOGIN_QUAY_PASSWD
+  - quay.io/openeuler/openeuler
+
+hub.oepkgs.net:
+  - LOGIN_OEPKGS_USER
+  - LOGIN_OEPKGS_PASSWD
+  - hub.oepkgs.net/openeuler/openeuler

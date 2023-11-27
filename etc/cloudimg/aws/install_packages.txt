@@ -1,0 +1,12 @@
+vim
+tar
+make
+zip
+gzip
+wget
+git
+tmux
+conntrack-tools
+socat
+iptables-services
+htop

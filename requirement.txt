@@ -1,4 +1,7 @@
+awscli
+boto3
 click
 datetime
 docker-py
+pyyaml
 wget

@@ -1,7 +1,8 @@
 # coding=utf-8
 import click
 
-from eulerpublisher.container import cli
+from eulerpublisher.container import cli as container_cli
+from eulerpublisher.cloudimg import cli as cloudimg_cli
 
 
 @click.group()
@@ -11,7 +12,8 @@ def entrance():
 
 def _add_commands():
     # Unified interface for extension.
-    entrance.add_command(cli.group)
+    entrance.add_command(container_cli.group)
+    entrance.add_command(cloudimg_cli.group)
 
 
 def main():
@@ -19,5 +21,5 @@ def main():
     entrance()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
