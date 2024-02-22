@@ -1,5 +1,6 @@
 awscli
 boto3
+bs4
 click
 datetime
 docker-py

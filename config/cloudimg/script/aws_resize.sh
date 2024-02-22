@@ -4,7 +4,9 @@ set -e
 DEV_NUM="/dev/nbd0"
 OPENEULER_IMG="openEuler-""$1-$2"
 TMP_DATA_PATH="$3"
+OUTPUT_DIR="${TMP_DATA_PATH}/output/"
 MOUNT_DIR="/mnt/nbd0"
+sudo mkdir -p $OUTPUT_DIR
 
 if [[ $(uname) == "Darwin" ]]; then
     echo "MacOS is not supported"
@@ -22,7 +24,7 @@ if [[ ! -z "${nbd_loaded}" ]]; then
     sudo qemu-nbd -d "${DEV_NUM}"
 fi
 sudo qemu-nbd -c "${DEV_NUM}" "${TMP_DATA_PATH}${OPENEULER_IMG}.qcow2"
-sudo e2fsck -fy ${DEV_NUM}p2 
+sudo e2fsck -fy ${DEV_NUM}p2 || true
 sudo resize2fs ${DEV_NUM}p2 6G
 sudo sync
 
@@ -47,10 +49,16 @@ EOF
 sudo sync
 sleep 3
 
+# mount disk
+mkdir -p ${MOUNT_DIR}
+sudo mount ${DEV_NUM}p2 ${MOUNT_DIR}
+
+# enable PasswordAuth for temporary ssh
+sed -i '/PasswordAuthentication/s/^/# /' ${MOUNT_DIR}/etc/ssh/sshd_config
+sed -i '$a\PasswordAuthentication yes'   ${MOUNT_DIR}/etc/ssh/sshd_config
+
 # Insert ena.ko when boots
 if [[ "$2" == "aarch64" ]]; then
-    mkdir -p ${MOUNT_DIR}
-    sudo mount ${DEV_NUM}p2 ${MOUNT_DIR}
     sudo rm -f ${TMP_DATA_PATH}ena.txt
     sudo find ${MOUNT_DIR}/usr/lib/modules/ -name ena.ko.xz > ${TMP_DATA_PATH}ena.txt
     # if ena.ko is not found throw error
@@ -63,9 +71,17 @@ if [[ "$2" == "aarch64" ]]; then
     sudo bash -c ' echo "install ena insmod /root/ena.ko" >> ${MOUNT_DIR}/etc/modprobe.d/ena.conf '
     sudo bash -c ' echo "ena" >> ${MOUNT_DIR}/etc/modules-load.d/ena.conf '
     sudo sync
-    sudo umount ${MOUNT_DIR}
 fi
+
+# umount
+sudo umount ${MOUNT_DIR}
+sudo rmdir ${MOUNT_DIR}
 
 sudo qemu-nbd -d ${DEV_NUM}
 qemu-img resize ${TMP_DATA_PATH}${OPENEULER_IMG}.qcow2 --shrink 8G
-qemu-img convert ${TMP_DATA_PATH}${OPENEULER_IMG}.qcow2 ${OPENEULER_IMG}.raw
+qemu-img convert ${TMP_DATA_PATH}${OPENEULER_IMG}.qcow2 ${OUTPUT_DIR}${OPENEULER_IMG}.raw
+
+
+# Delete temporary data
+sudo rm -rf ${TMP_DATA_PATH}${OPENEULER_IMG}.qcow2
+echo "Original image cleaned."

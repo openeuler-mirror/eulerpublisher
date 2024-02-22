@@ -4,7 +4,7 @@
 # 仓库名
 # - 登录名
 # - 登录密码
-# - 发布镜像的repo
+# - 默认发布镜像的repo
 
 docker.io:
   - LOGIN_DOCKER_USER
