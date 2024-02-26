@@ -214,8 +214,8 @@ class OePublisher(pb.Publisher):
         if self.build_and_push() != pb.PUBLISH_SUCCESS:
             click.echo(click.style("[Publish] Build and push failed.", fg="red"))
             return pb.PUBLISH_FAILED
-        #if self.check(tag=self.version.lower()) != pb.PUBLISH_SUCCESS:
-        #    click.echo(click.style("[Publish] Unit test failed.", fg="red"))
-        #    return pb.PUBLISH_FAILED
+        if self.check(tag=self.version.lower()) != pb.PUBLISH_SUCCESS:
+            click.echo(click.style("[Publish] Unit test failed.", fg="red"))
+            return pb.PUBLISH_FAILED
         click.echo("[Publish] finished")
         return pb.PUBLISH_SUCCESS
