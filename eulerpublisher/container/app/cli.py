@@ -145,6 +145,11 @@ def push(repo, registry, tag, mpublish):
     help="The name of tested image.",
 )
 @click.option(
+    "-h",
+    "--hubnamespace",
+    help="The namespace of hub where the tested image stores.",
+)
+@click.option(
     "-s",
     "--script",
     help="The shell script for testing application container image.",
@@ -156,9 +161,13 @@ def push(repo, registry, tag, mpublish):
     help="The tag of application container image, "
         "such as httpd2.4.51-oe2203lts, etc.",
 )
-def check(name, script, tag):
+def check(name, hubnamespace, script, tag):
     obj = AppPublisher()
-    ret = obj.check(image_name=name, script=script, tag=str(tag).lower())
+    ret = obj.check(
+        image_name=name,
+        namespace=hubnamespace,
+        script=script, tag=str(tag).lower()
+    )
     if ret != pb.PUBLISH_SUCCESS:
         sys.exit(1)
     sys.exit(0)

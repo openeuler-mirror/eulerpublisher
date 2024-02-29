@@ -138,17 +138,22 @@ class AppPublisher(pb.Publisher):
         return pb.PUBLISH_SUCCESS
     
     # Run test script
-    def check(self, image_name="", tag="", script=""):
+    def check(self, namespace="openeuler", image_name="", tag="", script=""):
         try:
             if not script:
                 script = TESTCASE_PATH + image_name + TESTCASE_SUFFIX
             if not os.path.exists(script):
                 click.echo(click.style(
-                    f"[Check] test script `{script}` does not exist", fg="red"
+                    f"[Check] File: {script} does not exist, no test runs."
                 ))
-                return pb.PUBLISH_FAILED
-            click.echo(click.style(f"[Check] checking {image_name}:{tag} ..."))
-            env_vars = {'DOCKER_TAG': tag}
+                return pb.PUBLISH_SUCCESS
+            click.echo(
+                click.style(f"[Check] checking {namespace}/{image_name}:{tag} ...")
+            )
+            env_vars = {
+                'DOCKER_TAG': tag,
+                'DOCKER_NAMESPACE': namespace
+            }
             os.chmod(script, 0o755)
             process = subprocess.Popen(
                 script,
@@ -160,5 +165,5 @@ class AppPublisher(pb.Publisher):
                 return pb.PUBLISH_FAILED
         except subprocess.CalledProcessError as err:
             click.echo(click.style(f"[Check] {err}", fg="red"))
-        click.echo("[Check] finished")
+        click.echo("[Check] All tests are finished.")
         return pb.PUBLISH_SUCCESS

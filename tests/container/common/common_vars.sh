@@ -13,7 +13,4 @@ readonly DOCKER_NETWORK="${DOCKER_NETWORK:-${DOCKER_PREFIX}_net}"
 # List of all supported architectures for the images.
 readonly SUPPORTED_ARCHITECTURES="amd64 arm64"
 # List of all supported registries.
-# readonly SUPPORTED_REGISTRIES="hub.oepkgs.net quay.io docker.io"
-readonly SUPPORTED_REGISTRIES="docker.io"
-# List of all supported namespaces.
-readonly SUPPORTED_NAMESPACES="openeuler"
+readonly SUPPORTED_REGISTRIES="hub.oepkgs.net quay.io docker.io"

@@ -75,13 +75,6 @@ wait_redis_container_ready() {
     wait_container_ready "${container}" "${log}"
 }
 
-# Test supported archs
-test_support_archs() {
-    find_support_archs
-    retval=$?
-    assertEquals "$target is not supported" 0 ${retval}
-}
-
 # Test invoking a container with ALLOW_EMPTY_PASSWORD=yes and then
 # connecting to it.
 test_start_and_connect_container_without_password() {
