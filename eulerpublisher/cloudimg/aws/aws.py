@@ -18,19 +18,18 @@ from eulerpublisher.publisher import OPENEULER_REPO
 
 
 ROLE_NAME = "vmimport"
-SCRIPT_PATH = EP_PATH + "cloudimg/script/"
-PACKER_FILE_PATH = EP_PATH + "cloudimg/aws/"
+SCRIPT_PATH = EP_PATH + "config/cloudimg/script/"
+PACKER_FILE_PATH = EP_PATH + "config/cloudimg/aws/"
 ROLE_POLICY = PACKER_FILE_PATH + "role-policy.json"
 TRUST_POLICY = PACKER_FILE_PATH + "trust-policy.json"
 DEFAULT_RPMLIST = PACKER_FILE_PATH + "install_packages.txt"
-AWS_DATA_PATH = "/home/tmp/eulerpublisher/cloudimg/data/aws/"
-
+AWS_DATA_PATH = "/tmp/eulerpublisher/cloudimg/aws/data/"
 
 def _check_credentials():
     config = os.path.join(os.environ["HOME"], ".aws", "config")
     credentials = os.path.join(os.environ["HOME"], ".aws", "credentials")
     if not os.path.exists(config) or not os.path.exists(credentials):
-        raise TypeError(
+        raise Exception(
             "AWS credentials are not configured,"
             " please run `aws configure` to configure first."
         )
@@ -80,13 +79,15 @@ def _make_base_image(arch, version):
     raw_file = "openEuler-" + version + "-" + arch + ".raw"
     qcow2_file = "openEuler-" + version + "-" + arch + ".qcow2"
     xz_file = "openEuler-" + version + "-" + arch + ".qcow2.xz"
-    if not os.path.exists(raw_file):
+    # 为了方便查看，最终的raw格式镜像保存在当前 output/ 目录下
+    if not os.path.exists("output/" + raw_file):
         if not os.path.exists(qcow2_file):
             if not os.path.exists(xz_file):
                 url = (
                     OPENEULER_REPO
                     + "openEuler-"
-                    + version + "/"
+                    + version
+                    + "/"
                     + "virtual_machine_img"
                     + "/"
                     + arch
@@ -112,33 +113,19 @@ def _create_packer(arch, region, img_name, source, rpmlist):
     data["builders"][0]["ami_regions"] = [region]
     data["builders"][0]["source_ami"] = source
     data["builders"][0]["ami_name"] = img_name + "-hvm"
-    data["provisioners"][0]["environment_vars"] = [
-        "INSTALL_PACKAGES=" + packages
-    ]
+    data["provisioners"][0]["environment_vars"] = ["INSTALL_PACKAGES=" + packages]
     data["provisioners"][0]["script"] = SCRIPT_PATH + "aws_install.sh"
     with open(file, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4)
 
 
 class AwsPublisher(pb.Publisher):
-    def __init__(self,
-                 version="",
-                 arch="",
-                 bucket="", 
-                 region="",
-                 rpmlist=""):
+    def __init__(self, version="", arch="", bucket="", region="", rpmlist=""):
         # 关键参数
-        self.img_name = "openEuler-" + version + "-" + arch
-        self.version = version
+        self.version = version.upper()
+        self.img_name = "openEuler-" + self.version + "-" + arch
         self.bucket = bucket
         self.region = region
-        # 获取支持的架构类型
-        if arch != str(platform.machine()):
-            raise TypeError(
-                "Unsupported architecture " + arch + \
-                ", while current host architecture is " + \
-                str(platform.machine())
-            )
         self.arch = arch
         # 获取要预安装的软件包列表，不显示指定时安装默认包
         if not rpmlist:
@@ -155,24 +142,36 @@ class AwsPublisher(pb.Publisher):
         self.ec2_client = boto3.client("ec2")
 
     def prepare(self):
+        # 获取支持的架构类型
+        if self.arch != str(platform.machine()):
+            raise TypeError(
+                "Unsupported architecture "
+                + self.arch
+                + ", while current host architecture is "
+                + str(platform.machine())
+            )
         # 获取基础镜像
-        _make_base_image(arch=self.arch,
-                         version=self.version
-        )
+        _make_base_image(arch=self.arch, version=self.version)
         # 上传镜像到S3存储
         key = self.img_name + ".raw"
+        click.echo(
+            "[Prepare] Searching %s on S3://%s ..." % (key, self.bucket)
+        )
         if not _find_object(self.s3_client, key, self.bucket):
-            click.echo("[Prepare] Uploading raw image to s3 bucket: %s..."
-                % self.bucket)
+            click.echo(
+                "[Prepare] Uploading raw image to s3 bucket: %s..." % self.bucket
+            )
             # 直接使用awscli可以方便实时显示上传进度
             try:
-                subprocess.call([
-                    "aws",
-                    "s3",
-                    "cp",
-                    AWS_DATA_PATH + key,
-                    "s3://" + self.bucket + "/" + key
-                ])
+                subprocess.call(
+                    [
+                        "aws",
+                        "s3",
+                        "cp",
+                        AWS_DATA_PATH + key,
+                        "s3://" + self.bucket + "/" + key,
+                    ]
+                )
             except Exception:
                 raise click.ClickException(
                     "[Prepare] Failed to upload raw image to "
@@ -181,8 +180,7 @@ class AwsPublisher(pb.Publisher):
         else:
             click.echo(
                 "[Prepare] %s is already existed on S3://%s, "
-                "please delete and re-upload it if you want."
-                % (key, self.bucket)
+                "please delete and re-upload it if you want." % (key, self.bucket)
             )
         # 根据实际信息修改role_policy
         _create_policy(self.bucket)
@@ -190,8 +188,7 @@ class AwsPublisher(pb.Publisher):
         if not _check_role(self.iam_client):
             trust_policy = open(TRUST_POLICY)
             self.iam_client.create_role(
-                RoleName=ROLE_NAME,
-                AssumeRolePolicyDocument=trust_policy.read()
+                RoleName=ROLE_NAME, AssumeRolePolicyDocument=trust_policy.read()
             )
         # 写入role policy
         role_policy = open(ROLE_POLICY)
@@ -231,11 +228,9 @@ class AwsPublisher(pb.Publisher):
             resp = self.ec2_client.describe_import_snapshot_tasks(
                 ImportTaskIds=[import_taskid]
             )
-            status = \
-                resp["ImportSnapshotTasks"][0]["SnapshotTaskDetail"]["Status"]
+            status = resp["ImportSnapshotTasks"][0]["SnapshotTaskDetail"]["Status"]
             time.sleep(2)
-        snapshot_id = \
-            resp["ImportSnapshotTasks"][0]["SnapshotTaskDetail"]["SnapshotId"]
+        snapshot_id = resp["ImportSnapshotTasks"][0]["SnapshotTaskDetail"]["SnapshotId"]
 
         # step-2. 根据snapshot_id制作基础AMI镜像
         time_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -246,10 +241,9 @@ class AwsPublisher(pb.Publisher):
         resp = self.ec2_client.register_image(
             Name=self.img_name + "-" + time_str + "-BASE",
             Architecture=arch,
-            BlockDeviceMappings=[{
-                "DeviceName": "/dev/xvda",
-                "Ebs": {"SnapshotId": snapshot_id}
-            }],
+            BlockDeviceMappings=[
+                {"DeviceName": "/dev/xvda", "Ebs": {"SnapshotId": snapshot_id}}
+            ],
             Description="This is an middleware used to build final image.",
             EnaSupport=True,
             RootDeviceName="/dev/xvda",
@@ -261,17 +255,16 @@ class AwsPublisher(pb.Publisher):
         _create_packer(
             arch=self.arch,
             region=self.region,
-            img_name=self.img_name + "-" +
-                datetime.datetime.now().strftime("%Y%m%d_%H%M%S"),
+            img_name=self.img_name
+            + "-"
+            + datetime.datetime.now().strftime("%Y%m%d_%H%M%S"),
             source=image_id,
-            rpmlist=self.rpmlist
+            rpmlist=self.rpmlist,
         )
         try:
-            subprocess.call([
-                "packer",
-                "build",
-                PACKER_FILE_PATH + "aws_" + self.arch + ".json"
-            ])
+            subprocess.call(
+                ["packer", "build", PACKER_FILE_PATH + "aws_" + self.arch + ".json"]
+            )
         except Exception:
             raise click.ClickException("[Build] Failed to build final image.")
 

@@ -12,26 +12,23 @@ from eulerpublisher.publisher import EP_PATH
 from eulerpublisher.publisher import OPENEULER_REPO
 
 
-GEN_DATA_PATH = "/home/tmp/eulerpublisher/cloudimg/data/gen/"
-DEFAULT_RPMLIST = EP_PATH + "cloudimg/gen/install_packages.txt"
-CONFIG_FILE = EP_PATH + "cloudimg/gen/gen.cfg"
-SCRIPT_PATH = EP_PATH + "cloudimg/script/"
+GEN_DATA_PATH = "/tmp/eulerpublisher/cloudimg/gen/data/"
+DEFAULT_RPMLIST = EP_PATH + "config/cloudimg/gen/install_packages.txt"
+CONFIG_FILE = EP_PATH + "config/cloudimg/gen/gen.cfg"
+SCRIPT_PATH = EP_PATH + "config/cloudimg/script/"
 
 
 class GenPublisher(pb.Publisher):
-    def __init__(self,
-                 version="",
-                 arch="",
-                 rpmlist="",
-                 output=""):
+    def __init__(self, version="", arch="", rpmlist="", output=""):
         # 关键参数
-        self.version = version
+        self.version = version.upper()
         # 获取支持的架构类型
         if arch != str(platform.machine()):
             raise TypeError(
-                "Unsupported architecture " + arch + \
-                "while current host architecture is " + \
-                str(platform.machine())
+                "Unsupported architecture "
+                + arch
+                + "while current host architecture is "
+                + str(platform.machine())
             )
         self.arch = arch
         # 获取要预安装的软件包列表，不显示指定时安装默认包
@@ -41,7 +38,7 @@ class GenPublisher(pb.Publisher):
             self.rpmlist = os.path.abspath(rpmlist)
         # 构建生成的镜像名
         self.output = output
-    
+
     def prepare(self):
         if not os.path.exists(GEN_DATA_PATH):
             os.makedirs(GEN_DATA_PATH, exist_ok=True)
@@ -53,7 +50,8 @@ class GenPublisher(pb.Publisher):
                 url = (
                     OPENEULER_REPO
                     + "openEuler-"
-                    + self.version + "/"
+                    + self.version
+                    + "/"
                     + "virtual_machine_img"
                     + "/"
                     + self.arch
@@ -68,21 +66,27 @@ class GenPublisher(pb.Publisher):
             if subprocess.call(["unxz", "-f", xz_file]):
                 click.echo(click.style("\n[Prepare] failed", fg="red"))
                 return pb.PUBLISH_FAILED
-        click.echo("\n[Prepare] finsihed")
+        click.echo("\n[Prepare] finished")
         return pb.PUBLISH_SUCCESS
-    
-    
+
     def build(self):
         input = "openEuler-" + self.version + "-" + self.arch + ".qcow2"
         time_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         # 默认输出保存为带有时间信息的qcow2格式
         if not self.output:
-            self.output = "openEuler-" + self.version + "-" + self.arch \
-                     + "-" + time_str + ".qcow2"
+            self.output = (
+                "openEuler-"
+                + self.version
+                + "-"
+                + self.arch
+                + "-"
+                + time_str
+                + ".qcow2"
+            )
         script = SCRIPT_PATH + "gen_install.sh"
         args = [input, self.output, GEN_DATA_PATH, self.rpmlist, CONFIG_FILE]
         if subprocess.call(["sudo", "sh", script] + args):
-            click.echo("\n[Build] finsihed")
+            click.echo("\n[Build] finished")
             return pb.PUBLISH_FAILED
-        click.echo("\n[Build] finsihed")
+        click.echo("\n[Build] finished")
         return pb.PUBLISH_SUCCESS
