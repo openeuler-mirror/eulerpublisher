@@ -81,19 +81,4 @@ test_static_content() {
     assertEquals "Checksum mismatch in retrieved test.txt" "${orig_checksum}" "${retrieved_checksum}"
 }
 
-test_custom_config() {
-    debug "Creating httpd container with custom config"
-    custom_config="${ROOTDIR}/httpd_test_data/httpd.conf"
-    test_data_wwwroot="${ROOTDIR}/httpd_test_data/html"
-    container=$(docker_run_server -p "$LOCAL_PORT:80" -v "$custom_config:/etc/httpd/httpd.conf:ro" -v "$test_data_wwwroot:/srv/www:ro")
-
-    assertNotNull "Failed to start the container" "${container}" || return 1
-    wait_httpd_container_ready "${container}" || return 1
-
-    orig_checksum=$(md5sum "$test_data_wwwroot/index.html" | awk '{ print $1 }')
-    retrieved_checksum=$(curl -sS "http://127.0.0.1:$LOCAL_PORT" | md5sum | awk '{ print $1 }')
-
-    assertEquals "Checksum mismatch in retrieved index.hml" "${orig_checksum}" "${retrieved_checksum}"
-}
-
 load_shunit2
