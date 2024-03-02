@@ -1,7 +1,6 @@
 # coding=utf-8
 import click
 import datetime
-import docker
 import os
 import platform
 import subprocess
