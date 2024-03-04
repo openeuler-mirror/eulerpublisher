@@ -137,7 +137,7 @@ find_support_archs() {
     for registry in ${SUPPORTED_REGISTRIES}; do
         image="${registry}/${DOCKER_NAMESPACE}/${DOCKER_PACKAGE}:${DOCKER_TAG}"
         manifests=$(docker manifest inspect $image)
-        archs=$(echo "${manifests}" | jq -r '.manifests.[].platform.architecture')
+        archs=$(echo "${manifests}" | jq -r '.manifests[].platform.architecture')
         if [ -z "${archs}" ]; then
             fail "ERROR: Could not obtain manifest list for $image"
             return 1
