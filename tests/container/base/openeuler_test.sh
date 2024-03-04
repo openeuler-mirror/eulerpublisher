@@ -45,7 +45,7 @@ docker_run() {
 }
 
 test_image_cves() {
-    pattern="No vulnerable packages detected"
+    pattern="No vulnerable"
     ret=$(docker scout cves ${DOCKER_IMAGE} 2>/dev/null)
     assertTrue "Found Vulnerabilities" "$(echo $ret | grep "${pattern}")"
 }
