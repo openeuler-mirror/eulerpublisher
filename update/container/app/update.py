@@ -162,6 +162,7 @@ class ContainerVerification:
                 "container",
                 "app",
                 "publish",
+                "-p", f"openeuler/{name}",
                 "-t", tag,
                 "-f", file,
                 "-m"
