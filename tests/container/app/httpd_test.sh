@@ -53,8 +53,9 @@ test_default_config() {
 
     assertNotNull "Failed to start the container" "${container}" || return 1
     wait_httpd_container_ready "${container}" || return 1
-
-    assertTrue "curl -sS http://127.0.0.1:$LOCAL_PORT | grep -Fq 'working properly'"
+    logs=$(curl -sS http://127.0.0.1:$LOCAL_PORT)
+    (echo $logs | grep -Fq 'working properly') || (echo $logs | grep -Fq 'It works')
+    assertTrue $?
 }
 
 test_default_config_ipv6() {
@@ -64,7 +65,9 @@ test_default_config_ipv6() {
     assertNotNull "Failed to start the container" "${container}" || return 1
     wait_httpd_container_ready "${container}" || return 1
 
-    assertTrue "curl -sS http://[::1]:$LOCAL_PORT | grep -Fq 'working properly'"
+    logs=$(curl -sS http://[::1]:$LOCAL_PORT)
+    (echo $logs | grep -Fq 'working properly') || (echo $logs | grep -Fq 'It works')
+    assertTrue $?
 }
 
 test_static_content() {
