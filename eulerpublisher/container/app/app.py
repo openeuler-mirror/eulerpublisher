@@ -115,7 +115,7 @@ class AppPublisher(pb.Publisher):
                 return pb.PUBLISH_FAILED
             # push
             for tag in self.tags_push:
-                if subprocess.call("docker push " + tag, shell=True)!= 0:
+                if subprocess.call("docker push " + tag, shell=True) != 0:
                     return pb.PUBLISH_FAILED
         except (OSError, subprocess.CalledProcessError) as err:
             click.echo(click.style(f"[Push] {err}", fg="red"))
@@ -131,7 +131,8 @@ class AppPublisher(pb.Publisher):
                 != pb.PUBLISH_SUCCESS
             ):
                 return pb.PUBLISH_FAILED
-            self.build(op="push")
+            if self.build(op="push") != pb.PUBLISH_SUCCESS:
+                return pb.PUBLISH_FAILED
         except (OSError, subprocess.CalledProcessError) as err:
             click.echo(click.style(f"[Push] {err}", fg="red"))
         click.echo("[Push] finished")
