@@ -83,23 +83,21 @@ class AppPublisher(pb.Publisher):
                 return pb.PUBLISH_FAILED
             # build images with 'buildx'
             builder = pb.create_builder()
-            if (
-                subprocess.call(
-                    "docker buildx build "
-                    + "--platform "
-                    + self.platform
-                    + " "
-                    + self.tags_build
-                    + " --"
-                    + op
-                    + " .",
-                    shell=True,
-                )
-                != 0
-            ):
-                return pb.PUBLISH_FAILED
+            ret = subprocess.call(
+                "docker buildx build "
+                + "--platform "
+                + self.platform
+                + " "
+                + self.tags_build
+                + " --"
+                + op
+                + " .",
+                shell=True,
+            )
             subprocess.call(["docker", "buildx", "stop", builder])
             subprocess.call(["docker", "buildx", "rm", builder])
+            if ret != 0:
+                return pb.PUBLISH_FAILED
         except (OSError, subprocess.CalledProcessError) as err:
             click.echo(click.style(f"[Build] {err}", fg="red"))
         click.echo("[Build] finished")

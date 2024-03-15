@@ -158,20 +158,18 @@ class OePublisher(pb.Publisher):
             builder = pb.create_builder()
             # build and push docker image
             os.chdir(self.version)
-            if (
-                subprocess.call(
-                    "docker buildx build "
-                    + "--platform linux/arm64,linux/amd64 "
-                    + self.tags
-                    + " --push "
-                    + ".",
-                    shell=True,
-                )
-                != 0
-            ):
-                return pb.PUBLISH_FAILED
+            ret = subprocess.call(
+                "docker buildx build "
+                + "--platform linux/arm64,linux/amd64 "
+                + self.tags
+                + " --push "
+                + ".",
+                shell=True
+            )
             subprocess.call(["docker", "buildx", "stop", builder])
             subprocess.call(["docker", "buildx", "rm", builder])
+            if ret != 0:
+                return pb.PUBLISH_FAILED
         except (OSError, subprocess.CalledProcessError) as err:
             click.echo(click.style(f"[Build and Push] {err}", fg="red"))
         click.echo("[Build and Push] finished")
