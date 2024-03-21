@@ -40,7 +40,10 @@ class AppPublisher(pb.Publisher):
     ):
         self.repo = repo
         self.registry = registry
-        self.dockerfile = os.path.abspath(dockerfile)
+        if os.path.exists(dockerfile):
+            self.dockerfile = os.path.abspath(dockerfile)
+        else:
+            self.dockerfile = ""
         # get multiple-registry yaml path
         if multi:
             # if EP_LOGIN_FILE exists or valuable
