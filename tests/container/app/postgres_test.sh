@@ -16,7 +16,9 @@ oneTimeSetUp() {
     remove_current_image
 
     # Make sure we're using the latest OCI image.
+    debug "pulling image ${DOCKER_IMAGE}"
     docker pull --quiet "${DOCKER_IMAGE}" > /dev/null
+    debug "done pulling image ${DOCKER_IMAGE}"
 
     docker network create "$DOCKER_NETWORK" > /dev/null 2>&1
 }
@@ -25,7 +27,7 @@ oneTimeTearDown() {
   docker stop postgres_test > /dev/null 2>&1
     docker network rm "$DOCKER_NETWORK" > /dev/null 2>&1
 }
-
+# 运行postgres容器
 docker_run_postgres(){
   docker run \
     --rm \
@@ -37,6 +39,7 @@ docker_run_postgres(){
     #debug "${DOCKER_IMAGE}"
 }
 
+# 在容器中运行psql命令，进行简单的查询
 docker_connect_postgres(){
   debug "Connecting to postgres container"
   docker exec \
@@ -59,18 +62,9 @@ test_postgres_start() {
     sleep 5
     out=$(docker_connect_postgres)
 
+    # 判断命令是否执行成功
     assertTrue "Failed to connect to the container" "$?" || return 1
     
-}
-
-load_shunit2() {
-  if [ -e /usr/share/shunit2/shunit2 ]; then
-    # shellcheck disable=SC1091
-    . /usr/share/shunit2/shunit2
-  else
-    # shellcheck disable=SC1091
-    . shunit2
-  fi
 }
 
 # Load shUnit2.
