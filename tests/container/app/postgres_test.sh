@@ -24,7 +24,7 @@ oneTimeSetUp() {
 }
 
 oneTimeTearDown() {
-  docker stop postgres_test > /dev/null 2>&1
+    docker stop postgres_test > /dev/null 2>&1
     docker network rm "$DOCKER_NETWORK" > /dev/null 2>&1
 }
 # 运行postgres容器
