@@ -190,6 +190,7 @@ class AwsPublisher(pb.Publisher):
             self.iam_client.create_role(
                 RoleName=ROLE_NAME, AssumeRolePolicyDocument=trust_policy.read()
             )
+            trust_policy.close()
         # 写入role policy
         role_policy = open(ROLE_POLICY)
         try:
@@ -200,7 +201,7 @@ class AwsPublisher(pb.Publisher):
             )
         except ClientError as e:
             raise click.ClickException(str(e))
-
+        role_policy.close()
         click.echo("[Prepare] finished.\n")
 
     def build(self):
