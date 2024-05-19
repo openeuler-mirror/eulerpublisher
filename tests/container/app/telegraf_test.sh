@@ -43,7 +43,7 @@ docker_run_server() {
 
 test_telegraf() {
     container=$(docker_run_server)
-    log="Starting Telegraf"
+    log="Tags enabled"
     ret=$(wait_container_ready "${container}" "${log}")
 }
 

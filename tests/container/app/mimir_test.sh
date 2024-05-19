@@ -43,7 +43,7 @@ docker_run_server() {
 
 test_mimir() {
     container=$(docker_run_server)
-    log="Starting application"
+    log="Application started"
     ret=$(wait_container_ready "${container}" "${log}")
 }
 

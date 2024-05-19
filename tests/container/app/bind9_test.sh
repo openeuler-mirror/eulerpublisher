@@ -43,7 +43,7 @@ docker_run_server() {
 
 test_bind9() {
     container=$(docker_run_server)
-    log="starting BIND"
+    log="running"
     ret=$(wait_container_ready "${container}" "${log}")
 }
 
