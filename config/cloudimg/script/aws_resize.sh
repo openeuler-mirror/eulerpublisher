@@ -54,8 +54,10 @@ mkdir -p ${MOUNT_DIR}
 sudo mount ${DEV_NUM}p2 ${MOUNT_DIR}
 
 # enable PasswordAuth for temporary ssh
-sed -i '/PasswordAuthentication/s/^/# /' ${MOUNT_DIR}/etc/ssh/sshd_config
-sed -i '$a\PasswordAuthentication yes'   ${MOUNT_DIR}/etc/ssh/sshd_config
+sed -i '/PasswordAuthentication/s/^/# /'        ${MOUNT_DIR}/etc/ssh/sshd_config
+sed -i '$a\PasswordAuthentication yes'          ${MOUNT_DIR}/etc/ssh/sshd_config
+sed -i '/KbdInteractiveAuthentication/s/^/# /'  ${MOUNT_DIR}/etc/ssh/sshd_config
+sed -i '$a\KbdInteractiveAuthentication yes'    ${MOUNT_DIR}/etc/ssh/sshd_config
 
 # Insert ena.ko when boots
 if [[ "$2" == "aarch64" ]]; then

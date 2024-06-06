@@ -1,3 +1,5 @@
+cloud-init
+cloud-utils-growpart
 wget
 tar
 hostname

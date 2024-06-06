@@ -21,7 +21,10 @@ fi
 sudo modprobe nbd max_part=3
 nbd_mount=$(mount | grep nbd0 || echo -n "")
 if [[ ! -z "${nbd_mount}" ]]; then
-    sudo umount -f "${MOUNT_DIR}"
+    sudo umount -f ${MOUNT_DIR}/dev
+    sudo umount -f ${MOUNT_DIR}/proc
+    sudo umount -f ${MOUNT_DIR}/sys
+    sudo umount -f ${MOUNT_DIR}
 fi
 
 nbd_loaded=$(lsblk | grep nbd0 || echo -n "")
@@ -39,16 +42,17 @@ sudo mount --bind /proc ${MOUNT_DIR}/proc
 sudo mount --bind /sys  ${MOUNT_DIR}/sys
 sleep 3
 
-# makes sure that running yum in the chroot it can get out to download stuff
-sudo cp /etc/resolv.conf $MOUNT_DIR/etc/resolv.conf
-# the packages must be installed
-sudo chroot $MOUNT_DIR yum install -y cloud-init cloud-utils-growpart
-# other packages need to be installed
-sudo chroot $MOUNT_DIR yum install -y $(cat ${INSTALL_PACKAGES})
-# clean cache
-sudo chroot $MOUNT_DIR yum clean all
+# install packages
+if [[ ! -z "$(cat ${INSTALL_PACKAGES})" ]]; then
+    # makes sure that running yum in the chroot it can get out to download stuff
+    sudo cp /etc/resolv.conf $MOUNT_DIR/etc/resolv.conf
+    # the packages need to be installed are listed in `INSTALL_PACKAGES`
+    sudo chroot $MOUNT_DIR yum install -y $(cat ${INSTALL_PACKAGES})
+    # clean cache
+    sudo chroot $MOUNT_DIR yum clean all
+fi
 
-# for security
+# for security needed by huawei
 if [[ ! -z ${GENERIC_CONFIG} ]]; then
     echo "Copying gen.cfg ..."
     sudo cp -f ${GENERIC_CONFIG} ${MOUNT_DIR}/etc/cloud/cloud.cfg.d/
@@ -56,6 +60,7 @@ fi
 
 sudo sync
 sleep 3
+
 sudo umount -f ${MOUNT_DIR}/dev
 sudo umount -f ${MOUNT_DIR}/proc
 sudo umount -f ${MOUNT_DIR}/sys
