@@ -17,7 +17,6 @@ SUCCESS_CODE=200
 TEST_NAMESPACE="openeulertest"
 
 
-
 def _request(url: str):
     cnt = 0
     response = None
@@ -63,6 +62,17 @@ def _get_info(file: str):
     if not tag:
         tag = contents[1] + "-oe" + _transform_version_format(contents[2])
     return contents[0], tag
+
+def _push_readme(file: str, namespace: str, repo: str):
+    current = os.path.dirname(os.path.abspath(__file__))
+    script = os.path.abspath(os.path.join(current, '../pushrm/pushrm.sh'))
+    try:
+        subprocess.run(
+            [script, file, namespace, repo],
+            env={**os.environ, 'APIKEY__QUAY_IO': os.environ["DOCKER_QUAY_APIKEY"]}
+        )
+    except subprocess.CalledProcessError as err:
+        click.echo(click.style(f"{err}", fg="red"))
     
 
 class ContainerVerification:
@@ -153,10 +163,14 @@ class ContainerVerification:
     def publish_updates(self):
         os.chdir(self.workdir)
         for file in self.change_files:
-            if os.path.basename(file) != "Dockerfile":
-                continue
             # build and push multi-platform image to `openeuler`
             name, tag = _get_info(file=file)
+            # update readme while changed file is README.md
+            if os.path.basename(file) == "README.md":
+                _push_readme(file=file, namespace="openeuler", repo=name)
+                continue
+            if os.path.basename(file) != "Dockerfile":
+                continue
             if subprocess.call([
                 "eulerpublisher",
                 "container",
