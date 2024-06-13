@@ -163,14 +163,15 @@ class ContainerVerification:
     def publish_updates(self):
         os.chdir(self.workdir)
         for file in self.change_files:
-            # build and push multi-platform image to `openeuler`
-            name, tag = _get_info(file=file)
             # update readme while changed file is README.md
             if os.path.basename(file) == "README.md":
+                name = file.split("/")[0]
                 _push_readme(file=file, namespace="openeuler", repo=name)
                 continue
             if os.path.basename(file) != "Dockerfile":
                 continue
+            # build and push multi-platform image to `openeuler`
+            name, tag = _get_info(file=file)
             if subprocess.call([
                 "eulerpublisher",
                 "container",
