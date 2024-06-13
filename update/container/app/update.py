@@ -66,6 +66,7 @@ def _get_info(file: str):
 def _push_readme(file: str, namespace: str, repo: str):
     current = os.path.dirname(os.path.abspath(__file__))
     script = os.path.abspath(os.path.join(current, '../pushrm/pushrm.sh'))
+    os.chmod(script, 0o755)
     try:
         subprocess.run(
             [script, file, namespace, repo],
