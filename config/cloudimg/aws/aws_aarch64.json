@@ -8,7 +8,7 @@
                 "ap-southeast-2"
             ],
             "source_ami": "ami-0d5ef8271b14cba19",
-            "instance_type": "t4g.micro",
+            "instance_type": "t4g.medium",
             "ssh_username": "root",
             "ssh_password": "openEuler12#$",
             "ami_name": "openEuler-22.03-LTS-SP1-aarch6420230720_154945-hvm",

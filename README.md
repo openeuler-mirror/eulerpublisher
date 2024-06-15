@@ -35,6 +35,16 @@ yum install docker
 pip install -r ./requirement.txt
 ```
 
+3.`eulerpublisher`基于[shUnit2](https://github.com/kward/shunit2)测试框架实现镜像测试特性，使用测试功能时需要预置 `shUnit2`, 方法如下：
+```
+# 下载shUnit2源码
+curl -fSL -o shunit2.tar.gz https://github.com/kward/shunit2/archive/refs/tags/v2.1.8.tar.gz
+
+# 解压并移动至/usr/share/shunit2目录
+mkdir -p /usr/share/shunit2
+tar -xvf shunit2.tar.gz -C /usr/share/shunit2 --strip-components=1
+```
+
 
 ## 使用说明
 

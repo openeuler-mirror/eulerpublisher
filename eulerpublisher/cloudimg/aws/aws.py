@@ -168,7 +168,7 @@ class AwsPublisher(pb.Publisher):
                         "aws",
                         "s3",
                         "cp",
-                        AWS_DATA_PATH + key,
+                        AWS_DATA_PATH + "output/" + key,
                         "s3://" + self.bucket + "/" + key,
                     ]
                 )

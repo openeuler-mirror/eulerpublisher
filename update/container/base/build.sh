@@ -11,6 +11,8 @@ echo -e "\n[STAGE] Install eulerpublisher"
 if [[which eulerpublisher > /dev/null 2>&1]]; then
     sudo pip3 uninstall -y eulerpublisher
 fi
+
+rm -rf eulerpublisher
 git clone https://gitee.com/openeuler/eulerpublisher.git
 cd eulerpublisher
 pip3 install -r ./requirement.txt
@@ -26,6 +28,7 @@ VERSIONS=(
     "22.03-LTS-SP1"
     "22.03-LTS-SP2"
     "22.03-LTS-SP3"
+    "24.03-LTS"
 )
 
 # publish updates
