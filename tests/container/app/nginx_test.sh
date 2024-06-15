@@ -10,8 +10,6 @@
 #  setUp() - run before each test
 #  tearDown() - run after each test
 
-# DOCKER_NETWORK="nginx_test_network"
-# CONTAINER_NAME="nginx_test_container"
 HTTP_PORT=8080
 oneTimeSetUp() {
     # Remove image before test.
@@ -32,10 +30,6 @@ tearDown() {
 
 }
 
-# oneTimeTearDown() {
-#     docker stop "$CONTAINER_NAME" > /dev/null 2>&1
-#     docker network rm "$DOCKER_NETWORK" > /dev/null 2>&1
-# }
 setUp() {
     # Start Nginx container
     suffix=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 8 | head -n 1)
@@ -46,7 +40,7 @@ setUp() {
        -p "${HTTP_PORT}:80" \
        "$@" \
        "${DOCKER_IMAGE}"
-    sleep 5 # Allow time for container to start
+   
 }
 
 test_nginx_start() {

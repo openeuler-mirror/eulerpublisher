@@ -69,8 +69,6 @@ docker_run_rabbitmq() {
 
 wait_for_rabbitmq_ready() {
     local container_id="$1"
-    # local log="rabbitmq"
-    sleep 10
     wait_mycontainer_ready "${container_id}" 
 }
 
