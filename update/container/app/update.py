@@ -100,7 +100,8 @@ class ContainerVerification:
             shutil.rmtree(self.workdir)
 
     def get_change_files(self):
-        url = REPOSITORY_REQUEST_URL + f"{self.prid}/files"
+        url = REPOSITORY_REQUEST_URL + f"{self.prid}/files?access_token=" + \
+            os.environ["GITEE_API_TOKEN"]
         response = _request(url=url)
         # check status code
         if response.status_code == SUCCESS_CODE:
