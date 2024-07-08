@@ -55,5 +55,16 @@ test_go_start() {
     assertEquals "Unexpected go version" "${expected}" "${out}" || return 1
 }
 
+
+test_hello_world() {
+    debug "Creating go container"
+    out=docker run \
+    --rm \
+    --name hello_world \
+    "${DOCKER_IMAGE}" \
+    go run ${ROOTDIR}/httpd_test_data/HelloWorld.go
+    assertEquals "Hello World" "${out}" || return 1
+}
+
 # Load shUnit2.
 load_shunit2
