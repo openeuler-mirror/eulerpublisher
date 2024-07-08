@@ -6,6 +6,7 @@ import subprocess
 import shutil
 import sys
 import os
+import re
 import yaml
 
 
@@ -37,14 +38,17 @@ def _transform_version_format(os_version: str):
 
     return ret
 
-# get application name, image tag
-def _get_info(file: str):
+# parse meta.yml and get the tags && building platforms
+def _parse_meta_yml(file: str):
     tag = ""
+    arch = ""
     contents = file.split("/")
     if len(contents) != DOCKERFILE_PATH_DEPTH:
-        click.echo(click.style(
-                f"Failed to check file path: {file}", fg="red"
-        ))
+        raise Exception(
+            f"Failed to check file path: {file}, "
+            "the correct Dockerfile path should be "
+            "`{app-name}/{app-version}/{os-version}/Dockerfile`"
+        )
     meta = contents[0] + "/meta.yml"
     if os.path.exists(meta):
         with open(meta, "r") as f:
@@ -52,16 +56,19 @@ def _get_info(file: str):
                 tags = yaml.safe_load(f)
                 if isinstance(tags, dict):
                     for key in tags:
-                        if tags[key] == file:
+                        if tags[key]['path'] == file:
                             tag = key
+                            if 'arch' in tags[key]:
+                                arch = tags[key]['arch']
                             break
             except yaml.YAMLError as e:
                 click.echo(click.style(
                     f"Error in YAML file : {file} : {e}", fg="red"
                 ))
     if not tag:
-        tag = contents[1] + "-oe" + _transform_version_format(contents[2])
-    return contents[0], tag
+        tag = re.sub(r'\D', '.', contents[1]) + \
+              "-oe" + _transform_version_format(contents[2])
+    return contents[0], tag, arch
 
 def _push_readme(file: str, namespace: str, repo: str):
     current = os.path.dirname(os.path.abspath(__file__))
@@ -86,6 +93,7 @@ class ContainerVerification:
 
     def __init__(self, 
         prid,
+        operation,
         source_repo,
         source_code_url,
         source_branch,
@@ -94,7 +102,7 @@ class ContainerVerification:
         self.source_repo = source_repo
         self.source_code_url = source_code_url
         self.source_branch = source_branch
-        self.workdir = DEFAULT_WORKDIR + f"/{self.source_repo}"
+        self.workdir = DEFAULT_WORKDIR + f"/{operation}/{self.source_repo}"
         self.change_files = []
         if os.path.exists(self.workdir):
             shutil.rmtree(self.workdir)
@@ -138,12 +146,13 @@ class ContainerVerification:
             if os.path.basename(file) != "Dockerfile":
                 continue
             # build and push multi-platform image to `openeulertest`
-            name, tag = _get_info(file=file)
+            name, tag, arch = _parse_meta_yml(file=file)
             if subprocess.call([
                 "eulerpublisher",
                 "container",
                 "app",
                 "publish",
+                "-a", arch,
                 "-p", f"{TEST_NAMESPACE}/{name}",
                 "-t", tag,
                 "-f", file
@@ -173,12 +182,13 @@ class ContainerVerification:
             if os.path.basename(file) != "Dockerfile":
                 continue
             # build and push multi-platform image to `openeuler`
-            name, tag = _get_info(file=file)
+            name, tag, arch = _parse_meta_yml(file=file)
             if subprocess.call([
                 "eulerpublisher",
                 "container",
                 "app",
                 "publish",
+                "-a", arch,
                 "-p", f"openeuler/{name}",
                 "-t", tag,
                 "-f", file,
@@ -226,9 +236,13 @@ if __name__ == "__main__":
         sys.exit(1)
 
     obj = ContainerVerification(
-        args.prid, args.source_repo, args.source_code_url, args.source_branch
+        prid=args.prid,
+        operation=args.operation,
+        source_repo=args.source_repo,
+        source_code_url=args.source_code_url,
+        source_branch=args.source_branch
     )
-    
+ 
     if obj.get_change_files():
         sys.exit(1)
     click.echo(click.style(f"Difference: {obj.change_files}"))
@@ -244,5 +258,8 @@ if __name__ == "__main__":
         if obj.check_updates():
             sys.exit(1)
     else:
-        click.echo(click.style(f"Unsupported operation: {args.operation}", fg="red"))
+        click.echo(click.style(
+            f"Unsupported operation: {args.operation}",
+            fg="red"
+        ))
     sys.exit(0)
