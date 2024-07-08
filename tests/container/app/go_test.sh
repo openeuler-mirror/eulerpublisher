@@ -67,8 +67,9 @@ run_hello_world(){
   docker run \
     --rm \
     --name hello_world \
+    -v ${ROOTDIR}/go_test_data/HelloWorld.go:/tmp/HelloWorld.go
     "${DOCKER_IMAGE}" \
-    go run ${ROOTDIR}/go_test_data/HelloWorld.go
+    go run /tmp/HelloWorld.go
 }
 
 # Load shUnit2.
