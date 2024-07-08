@@ -44,7 +44,7 @@ test_go_start() {
     assertNotNull "Failed to start the container" "${out}" || return 1
 
     LINUX_ARCH="amd64"
-    if [ x"$(uname -m)" == "xaarch64" ]; then
+    if [ "$(uname -m)" == "aarch64" ]; then
         LINUX_ARCH="arm64"
     fi
 
