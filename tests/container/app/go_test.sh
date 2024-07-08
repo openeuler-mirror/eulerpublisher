@@ -43,8 +43,32 @@ test_go_start() {
     out=$(docker_run_go)
     assertNotNull "Failed to start the container" "${out}" || return 1
 
-    expected="go version go1.17.3 linux/amd64"
+    LINUX_ARCH="amd64"
+    if [ "$(uname -m)" == "aarch64" ]; then
+        LINUX_ARCH="arm64"
+    fi
+
+    IMAGE_TAG=${DOCKER_IMAGE##*:}
+    APP_VERSION=${IMAGE_TAG%%-*}
+
+    expected="go version go$APP_VERSION linux/$LINUX_ARCH"
     assertEquals "Unexpected go version" "${expected}" "${out}" || return 1
+}
+
+
+test_hello_world() {
+    debug "Creating go container"
+    out=$(run_hello_world)
+    assertEquals "Hello World" "${out}" || return 1
+}
+
+# 运行go Hello World
+run_hello_world(){
+  docker run \
+    --rm \
+    --name hello_world \
+    "${DOCKER_IMAGE}" \
+    go run ${ROOTDIR}/go_test_data/HelloWorld.go
 }
 
 # Load shUnit2.
