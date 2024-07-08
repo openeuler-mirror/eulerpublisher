@@ -58,12 +58,17 @@ test_go_start() {
 
 test_hello_world() {
     debug "Creating go container"
-    out=docker run \
+    out=$(run_hello_world)
+    assertEquals "Hello World" "${out}" || return 1
+}
+
+# 运行go Hello World
+run_hello_world(){
+  docker run \
     --rm \
     --name hello_world \
     "${DOCKER_IMAGE}" \
-    go run ${ROOTDIR}/httpd_test_data/HelloWorld.go
-    assertEquals "Hello World" "${out}" || return 1
+    go run ${ROOTDIR}/go_test_data/HelloWorld.go
 }
 
 # Load shUnit2.
