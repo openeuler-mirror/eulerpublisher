@@ -39,17 +39,6 @@ wait_go_container_ready() {
     wait_container_ready "${container}" "go"
 }
 
-# 运行go容器
-docker_run_go(){
-  suffix=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 8 | head -n 1)
-  docker run \
-    --rm \
-    --name "${DOCKER_PREFIX}_${suffix}" \
-    -v ${ROOTDIR}/go_test_data/HelloWorld.go:/tmp/HelloWorld.go \
-    "${DOCKER_IMAGE}" \
-    "$@"
-}
-
 # 测试go容器运行是否成功
 test_go_start() {
     debug "Creating go container"
@@ -67,6 +56,17 @@ test_hello_world() {
     debug "Test run hello world!"
     local out=$(docker_run_go go run /tmp/HelloWorld.go)
     assertEquals "Hello World" "${out}" || return 1
+}
+
+# 运行go容器
+docker_run_go(){
+  suffix=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 8 | head -n 1)
+  docker run \
+    --rm \
+    --name "${DOCKER_PREFIX}_${suffix}" \
+    -v ${ROOTDIR}/go_test_data/HelloWorld.go:/tmp/HelloWorld.go \
+    "${DOCKER_IMAGE}" \
+    "$@"
 }
 
 # Load shUnit2.
