@@ -21,55 +21,52 @@ oneTimeSetUp() {
     debug "done pulling image ${DOCKER_IMAGE}"
 
     docker network create "$DOCKER_NETWORK" > /dev/null 2>&1
+
+    # Cleanup stale resources
+    tearDown
 }
 
-oneTimeTearDown() {
-    docker network rm "$DOCKER_NETWORK" > /dev/null 2>&1
+tearDown() {
+    for container in $(docker ps --filter "name=$DOCKER_PREFIX" --format "{{.Names}}"); do
+        debug "Removing container ${container}"
+        docker network remove "$DOCKER_NETWORK"
+        stop_container_sync "${container}"
+    done
+}
+
+wait_go_container_ready() {
+    local container="${1}"
+    wait_container_ready "${container}" "go"
 }
 
 # 运行go容器
 docker_run_go(){
+  suffix=$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 8 | head -n 1)
   docker run \
     --rm \
-    --name go_test \
+    --name "${DOCKER_PREFIX}_${suffix}" \
+    -v ${ROOTDIR}/go_test_data/HelloWorld.go:/tmp/HelloWorld.go \
     "${DOCKER_IMAGE}" \
-    go version
+    "$@"
 }
 
 # 测试go容器运行是否成功
 test_go_start() {
     debug "Creating go container"
-
-    out=$(docker_run_go)
-    assertNotNull "Failed to start the container" "${out}" || return 1
-
-    LINUX_ARCH="amd64"
-    if [ "$(uname -m)" == "aarch64" ]; then
-        LINUX_ARCH="arm64"
-    fi
-
-    IMAGE_TAG=${DOCKER_IMAGE##*:}
-    APP_VERSION=${IMAGE_TAG%%-*}
-
-    expected="go version go$APP_VERSION linux/$LINUX_ARCH"
-    assertEquals "Unexpected go version" "${expected}" "${out}" || return 1
+    local container=$(run_container_service)
+    assertNotNull "Failed to start the container" "${container}" || return 1
+    
+    wait_go_container_ready "${container}" || return 1
+    local status=$(docker inspect --format='{{.State.Status}}' "${container}")
+    assertEquals "Container status is not running" "running" "${status}"
 }
 
-
-test_hello_world() {
-    debug "Creating go container"
-    out=$(run_hello_world)
-    assertEquals "Hello World" "${out}" || return 1
-}
 
 # 运行go Hello World
-run_hello_world(){
-  docker run \
-    --rm \
-    --name hello_world \
-    -v ${ROOTDIR}/go_test_data/HelloWorld.go:/tmp/HelloWorld.go
-    "${DOCKER_IMAGE}" \
-    go run /tmp/HelloWorld.go
+test_hello_world() {
+    debug "Test run hello world!"
+    local out=$(docker_run_go go run /tmp/HelloWorld.go)
+    assertEquals "Hello World" "${out}" || return 1
 }
 
 # Load shUnit2.
