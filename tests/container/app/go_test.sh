@@ -42,12 +42,17 @@ wait_go_container_ready() {
 # 测试go容器运行是否成功
 test_go_start() {
     debug "Creating go container"
-    local container=$(run_container_service)
-    assertNotNull "Failed to start the container" "${container}" || return 1
-    
-    wait_go_container_ready "${container}" || return 1
-    local status=$(docker inspect --format='{{.State.Status}}' "${container}")
-    assertEquals "Container status is not running" "running" "${status}"
+    local out=$(docker_run_go go version)
+    assertNotNull "Failed to start the container" "${out}" || return 1
+
+    local LINUX_ARCH="amd64"
+    if [ "$(uname -m)" == "aarch64" ]; then
+        LINUX_ARCH="arm64"
+    fi
+    local IMAGE_TAG=${DOCKER_IMAGE##*:}
+    local APP_VERSION=${IMAGE_TAG%%-*}
+    local expected="go version go$APP_VERSION linux/$LINUX_ARCH"
+    assertEquals "Unexpected go version" "${expected}" "${out}" || return 1
 }
 
 
@@ -64,7 +69,7 @@ docker_run_go(){
   docker run \
     --rm \
     --name "${DOCKER_PREFIX}_${suffix}" \
-    -v ${ROOTDIR}/go_test_data/HelloWorld.go:/tmp/HelloWorld.go \
+    -v ${ROOTDIR}/go_test_data:/tmp \
     "${DOCKER_IMAGE}" \
     "$@"
 }
