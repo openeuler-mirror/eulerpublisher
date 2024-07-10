@@ -16,6 +16,7 @@ DOCKERFILE_PATH_DEPTH=4
 MAX_REQUEST_COUNT=20
 SUCCESS_CODE=200
 TEST_NAMESPACE="openeulertest"
+OFFICIAL_NAMESPACE="openeuler"
 
 
 def _request(url: str):
@@ -40,8 +41,12 @@ def _transform_version_format(os_version: str):
 
 # parse meta.yml and get the tags && building platforms
 def _parse_meta_yml(file: str):
-    tag = ""
+    tag = {
+        'tag': "",
+        'latest': False
+    }
     arch = ""
+    newest = ""
     contents = file.split("/")
     if len(contents) != DOCKERFILE_PATH_DEPTH:
         raise Exception(
@@ -52,22 +57,30 @@ def _parse_meta_yml(file: str):
     meta = contents[0] + "/meta.yml"
     if os.path.exists(meta):
         with open(meta, "r") as f:
-            try:
-                tags = yaml.safe_load(f)
-                if isinstance(tags, dict):
-                    for key in tags:
-                        if tags[key]['path'] == file:
-                            tag = key
-                            if 'arch' in tags[key]:
-                                arch = tags[key]['arch']
-                            break
-            except yaml.YAMLError as e:
-                click.echo(click.style(
-                    f"Error in YAML file : {file} : {e}", fg="red"
-                ))
-    if not tag:
-        tag = re.sub(r'\D', '.', contents[1]) + \
+            tags = yaml.safe_load(f)
+        try:
+            newest = max(tags.keys())
+            if not isinstance(tags, dict):
+                raise Exception(f"Format error: {meta}")
+            for key in tags:
+                if tags[key]['path'] != file:
+                    continue
+                tag['tag'] = key
+                if 'arch' in tags[key]:
+                    arch = tags[key]['arch']
+                break
+        except yaml.YAMLError as e:
+            raise click.echo(click.style(
+                f"Error in YAML file : {file} : {e}", fg="red"
+            ))
+    # generate the default tag
+    if not tag['tag']:
+        tag['tag'] = re.sub(r'\D', '.', contents[1]) + \
               "-oe" + _transform_version_format(contents[2])
+    # check if the tag is the latest
+    if tag['tag'] >= newest:
+        tag['latest'] = True
+
     return contents[0], tag, arch
 
 def _push_readme(file: str, namespace: str, repo: str):
@@ -154,7 +167,8 @@ class ContainerVerification:
                 "publish",
                 "-a", arch,
                 "-p", f"{TEST_NAMESPACE}/{name}",
-                "-t", tag,
+                "-t", tag['tag'],
+                "-l", tag['latest'],
                 "-f", file
             ]) != 0:
                 return 1
@@ -166,7 +180,7 @@ class ContainerVerification:
                 "check",
                 "-h", TEST_NAMESPACE,
                 "-n", name,
-                "-t", tag
+                "-t", tag['tag']
             ]) != 0:
                 return 1
         return 0
@@ -189,8 +203,9 @@ class ContainerVerification:
                 "app",
                 "publish",
                 "-a", arch,
-                "-p", f"openeuler/{name}",
-                "-t", tag,
+                "-p", f"{OFFICIAL_NAMESPACE}/{name}",
+                "-t", tag['tag'],
+                "-l", tag['latest'],
                 "-f", file,
                 "-m"
             ]) != 0:
