@@ -147,7 +147,8 @@ def push(repo, registry, tag, mpublish):
 @click.option(
     "-h",
     "--hubnamespace",
-    help="The namespace of hub where the tested image stores.",
+    default="openeuler",
+    help="The namespace of hub where the tested image stores, the default is `openeuler`.",
 )
 @click.option(
     "-s",
@@ -214,6 +215,14 @@ def check(name, hubnamespace, script, tag):
     "SDK, application framework, and/or LLM information.",
 )
 @click.option(
+    "-l",
+    "--latest",
+    type=bool,
+    default=False,
+    help="To show whether the tag is latest, and the image "
+    "will be taged with both `tag` and `latest` while True."
+)
+@click.option(
     "-m",
     "--mpublish",
     is_flag=True,
@@ -225,7 +234,7 @@ def check(name, hubnamespace, script, tag):
     "config/container/app/registry.yaml. In this situation, the option "
     "`--registry` is no longer needed.",
 )
-def publish(arch, repo, registry, dockerfile, tag, mpublish):
+def publish(arch, repo, registry, dockerfile, tag, latest, mpublish):
     if mpublish:
         click.echo("`-g, --registry` option will not be used "
             "while `-m, --mpublish` is set.")
@@ -234,7 +243,7 @@ def publish(arch, repo, registry, dockerfile, tag, mpublish):
         repo=repo,
         registry=registry,
         dockerfile=dockerfile,
-        tag=tag,
+        tag={'tag': tag, 'latest': latest},
         multi=mpublish,
     )
     if (not arch):

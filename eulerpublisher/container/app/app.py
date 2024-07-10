@@ -28,15 +28,18 @@ def _get_tags(registry, repo, tag, multi):
     tags_bulid = ""
     tags_push = []
     for item in full_repos:
-        tags_bulid += "-t " + item + ":" + tag
+        tags_bulid += "-t " + item + ":" + tag['tag']
         tags_bulid += " "
-        tags_push.append(item + ":" + tag)
+        if tag['latest']:
+            tags_bulid += "-t " + item + ":latest"
+            tags_bulid += " "
+        tags_push.append(item + ":" + tag['tag'])
     return tags_bulid, tags_push
 
 
 class AppPublisher(pb.Publisher):
     def __init__(
-        self, repo="", registry="", tag="", arch="", dockerfile="", multi=False
+        self, repo="", registry="", tag={}, arch="", dockerfile="", multi=False
     ):
         self.repo = repo
         self.registry = registry
@@ -102,7 +105,7 @@ class AppPublisher(pb.Publisher):
             if ret != 0:
                 return pb.PUBLISH_FAILED
         except (OSError, subprocess.CalledProcessError) as err:
-            click.echo(click.style(f"[Build] {err}", fg="red"))
+            raise err
         click.echo("[Build] finished")
         return pb.PUBLISH_SUCCESS
 
