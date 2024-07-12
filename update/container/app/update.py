@@ -43,7 +43,7 @@ def _transform_version_format(os_version: str):
 def _parse_meta_yml(file: str):
     tag = {
         'tag': "",
-        'latest': False
+        'latest': "False"
     }
     arch = ""
     newest = ""
@@ -79,7 +79,7 @@ def _parse_meta_yml(file: str):
               "-oe" + _transform_version_format(contents[2])
     # check if the tag is the latest
     if tag['tag'] >= newest:
-        tag['latest'] = True
+        tag['latest'] = "True"
 
     return contents[0], tag, arch
 
@@ -160,9 +160,6 @@ class ContainerVerification:
                 continue
             # build and push multi-platform image to `openeulertest`
             name, tag, arch = _parse_meta_yml(file=file)
-            click.echo("---------------------------------------------------------------------")
-            click.echo(click.style(f"parse meta yaml param, name: {name}, tag:{tag}, arch: {arch}!"))
-            click.echo("---------------------------------------------------------------------")
             if subprocess.call([
                 "eulerpublisher",
                 "container",
