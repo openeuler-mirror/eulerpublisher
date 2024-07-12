@@ -160,6 +160,9 @@ class ContainerVerification:
                 continue
             # build and push multi-platform image to `openeulertest`
             name, tag, arch = _parse_meta_yml(file=file)
+            click.echo("---------------------------------------------------------------------")
+            click.echo(click.style(f"parse meta yaml param, name: {name}, tag:{tag}, arch: {arch}!"))
+            click.echo("---------------------------------------------------------------------")
             if subprocess.call([
                 "eulerpublisher",
                 "container",
