@@ -39,7 +39,7 @@ def _get_tags(registry, repo, tag, multi):
 
 class AppPublisher(pb.Publisher):
     def __init__(
-        self, repo="", registry="", tag={}, arch="", dockerfile="", multi=False
+        self, repo="", registry="", tag={'tag':"",'latest': False}, arch="", dockerfile="", multi=False
     ):
         self.repo = repo
         self.registry = registry
