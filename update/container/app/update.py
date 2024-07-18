@@ -374,8 +374,8 @@ if __name__ == "__main__":
     elif args.operation == "check":
         if obj.check_code():
             sys.exit(1)
-        # if obj.check_updates():
-        #     sys.exit(1)
+        if obj.check_updates():
+            sys.exit(1)
     else:
         click.echo(click.style(
             f"Unsupported operation: {args.operation}",
