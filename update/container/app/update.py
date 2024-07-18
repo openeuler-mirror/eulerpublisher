@@ -1,6 +1,7 @@
 # coding=utf-8
 import argparse
 import click
+import json
 import requests
 import subprocess
 import shutil
@@ -9,15 +10,26 @@ import os
 import re
 import yaml
 
+from prettytable import PrettyTable
+
 
 DEFAULT_WORKDIR="/tmp/eulerpublisher/ci/container/"
 REPOSITORY_REQUEST_URL="https://gitee.com/api/v5/repos/openeuler/openeuler-docker-images/pulls/"
 DOCKERFILE_PATH_DEPTH=4
+APPLICATION_IMAGE_INFO_PATH_DEPTH=3
 MAX_REQUEST_COUNT=20
 SUCCESS_CODE=200
 TEST_NAMESPACE="openeulertest"
 OFFICIAL_NAMESPACE="openeuler"
-
+README_PATH_FORMAT="{0}/README.md"
+META_PATH_FORMAT="{0}/meta.yml"
+LOGO_PATH_FORMAT="{0}/doc/picture/{1}"
+IMAGE_INFO_PATH_FORMAT="{0}/doc/image-info.yml"
+PATH_CHECK_TABLE_HEADER=["Image Name", "File Path", "Path Check Result"]
+IMAGE_INFO_CHECK_TABLE_HEADER=["Image Name", "Image-info Item", "Format Check Result"]
+IMAGE_EXTENSIONS = ['.jpeg', '.jpg', '.png', '.gif', '.bmp', '.tiff', '.tif', '.webp', '.svg', '.heif', '.heic']
+IMAGE_INFO_MULTI_LINE = ["environment", "tags", "download", "usage"]
+IMAGE_INFO_SINGLE_LINE = ["license", "similar_packages", "dependency", "description", "category", "name"]
 
 def _request(url: str):
     cnt = 0
@@ -95,6 +107,76 @@ def _push_readme(file: str, namespace: str, repo: str):
     except subprocess.CalledProcessError as err:
         click.echo(click.style(f"{err}", fg="red"))
     
+
+def _check_file_path(self):
+    total_check_result = 0
+    table = PrettyTable()
+    table.field_names = PATH_CHECK_TABLE_HEADER
+    for file in self.change_files:
+        contents = file.split("/")
+        if len(contents) < 2:
+            continue
+        elif file.endswith("README.md") :
+            check_path = README_PATH_FORMAT.format(contents[0])
+        elif file.endswith("meta.yml"):
+            check_path = META_PATH_FORMAT.format(contents[0])
+        elif file.endswith("image-info.yml"):
+            check_path = IMAGE_INFO_PATH_FORMAT.format(contents[0])
+        elif contents[len(contents) - 1].split(".")[0] == "logo":
+            for extension in IMAGE_EXTENSIONS:
+                picture = contents[len(contents) - 1].split(".")[0] + extension
+                check_path = LOGO_PATH_FORMAT.format(contents[0], picture)
+                if os.path.exists(check_path):
+                    break
+                else:
+                    check_path = LOGO_PATH_FORMAT.format(contents[0], "logo.png")
+        else:
+            continue
+        if os.path.exists(check_path):
+            table.add_row([contents[0], check_path, click.style("pass", fg="green")])
+        else:
+            total_check_result = 1
+            table.add_row([contents[0], check_path, click.style("unpass", fg="red")])
+    print(table)
+    return total_check_result
+
+def _check_image_content(self):
+    total_check_result = 0
+    table = PrettyTable()
+    table.field_names = IMAGE_INFO_CHECK_TABLE_HEADER
+    for file in self.change_files:
+        if os.path.basename(file) != "image-info.yml":
+            continue
+        if len(file.split("/")) != APPLICATION_IMAGE_INFO_PATH_DEPTH:
+            continue
+        contents = file.split("/")
+        with open(file, "r") as f:
+            image_content = yaml.safe_load(f)
+        try:
+            for key in IMAGE_INFO_MULTI_LINE:
+                result = click.style("pass", fg="green")
+                value = image_content.get(key)
+                if not isinstance(value, str):
+                    value = json.dumps(value)
+                if value.find("\n") < 0:
+                    total_check_result = 1
+                    result = click.style("unpass", fg="red")
+                table.add_row([contents[0], key, result])
+            for key in IMAGE_INFO_SINGLE_LINE:
+                result = click.style("pass", fg="green")
+                value = image_content.get(key)
+                if not isinstance(value, str):
+                    value = json.dumps(value)
+                if value.find("\n") >= 0:
+                    total_check_result = 1
+                    result = click.style("unpass", fg="red")
+                table.add_row([contents[0], key, result])
+        except yaml.YAMLError as e:
+            raise click.echo(click.style(
+                f"Error in YAML file : {file} : {e}", fg="red"
+            ))
+    print(table)            
+    return total_check_result
 
 class ContainerVerification:
     '''
@@ -185,6 +267,26 @@ class ContainerVerification:
                 return 1
         return 0
     
+    def check_code(self):
+        os.chdir(self.workdir)
+        # Check the file list in the image directory 
+        path_check_result =_check_file_path(self)
+        if path_check_result:
+            click.echo(click.style(f"There are some wrong file paths in this PR. The file path check results of the related images are as above.", fg="red"))
+            return 1
+        else:
+            click.echo(click.style(f"The file paths check in this PR has passed.", fg="green"))
+            
+        
+        # Check the content format for image-info.yml 
+        content_check_result =_check_image_content(self)
+        if content_check_result:
+            click.echo(click.style(f"There are some format errors in `image-info.yml`, please check as above.", fg="red"))
+            return 1
+        else:
+            click.echo(click.style(f"The image-info.yml file content format check has passed.", fg="green"))
+        return 0
+    
     def publish_updates(self):
         os.chdir(self.workdir)
         for file in self.change_files:
@@ -270,8 +372,10 @@ if __name__ == "__main__":
         if obj.publish_updates():
             sys.exit(1)
     elif args.operation == "check":
-        if obj.check_updates():
+        if obj.check_code():
             sys.exit(1)
+        # if obj.check_updates():
+        #     sys.exit(1)
     else:
         click.echo(click.style(
             f"Unsupported operation: {args.operation}",
