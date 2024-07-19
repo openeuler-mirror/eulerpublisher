@@ -13,11 +13,12 @@ pip install eulerpublisher
 ```
 
 ## 环境依赖
-1.EulerPublisher实现多平台容器镜像构建功能依赖于docker和qemu，安装方式如下：
+1.EulerPublisher实现多平台容器镜像构建功能依赖于docker和qemu，实现镜像分析与瘦身依赖于slim，安装方式如下：
 
 ```
 yum install qemu-img
 yum install docker
+curl -sL https://raw.githubusercontent.com/slimtoolkit/slim/master/scripts/install-slim.sh | sudo -E bash -
 ```
 多平台镜像构建使用`docker buildx`，安装的docker版本需满足`>= 19.03`或单独安装`buildx`插件，单独安装`docker buildx`方法如下：
 
@@ -37,7 +38,7 @@ pip install -r ./requirements.txt
 # 下载shUnit2源码
 curl -fSL -o shunit2.tar.gz https://github.com/kward/shunit2/archive/refs/tags/v2.1.8.tar.gz
 
-# 解压并移动至/usr/share/shunit2目录
+# 解压并移动至/usr/re/shunit2目录
 mkdir -p /usr/share/shunit2
 tar -xvf shunit2.tar.gz -C /usr/share/shunit2 --strip-components=1
 ```
@@ -204,3 +205,29 @@ curl
 eulerpublisher cloudimg aws publish -v {VERSION} -a {ARCH} -b {BUCKET} -r {REGION} -p {RPMLIST}
 ```
 生成的AMI满足AWS Marketplace云镜像发布的要求，如有需要可进行镜像产品发布。由于AWS Marketplace存在人工审核环节，无法通过自动化流程一键发布，用户需手动操作申请发布AMI，见[https://aws.amazon.com/marketplace](https://aws.amazon.com/marketplace/partners/management-tour)。
+### 3. 镜像分析与优化
+
+#### 镜像静态分析
+
+本部分介绍如何使用EulerPublisher对目标容器镜像执行静态分析（包括对镜像的 Dockerfile 进行“逆向工程”）。如果想知道容器镜像内部的内容以及导致其体积过大的原因，请使用此命令。
+
+```
+eulerpublisher container analyze -i {IMAGEID}
+```
+   `IMAGEID`为本地镜像的`image id`或`repository:tag`，当`IMAGEID`不存在时会直接从dockerhub拉取，因此有出现镜像不存在而无法分析的错误。使用示例如下
+```
+eulerpublisher container analyze -i nginx:latest
+```
+#### 镜像优化
+
+本部分介绍如何使用EulerPublisher分析目标容器镜像及其应用程序，并从中构建优化的镜像。
+
+```
+eulerpublisher container slim -i {IMAGEID} -t {repository:tag} -p {TRUE/FALSE}
+```
+   `IMAGEID`为本地镜像的`image id`或`repository:tag`，当`IMAGEID`不存在时会直接从dockerhub拉取，因此有出现镜像不存在而无法分析的错误。
+   `repository:tag`为优化后镜像的名称。`-p`指示是否开启http探测，目标镜像并未暴露端口时（如hello-world应用），请关闭此选项。
+使用示例如下
+```
+eulerpublisher container slim -i d2c94e258dcb -t nginx.slim:latest -p true
+```

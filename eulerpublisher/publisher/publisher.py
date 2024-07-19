@@ -95,6 +95,25 @@ def check_qemu():
         )
         return PUBLISH_FAILED
     return PUBLISH_SUCCESS
+    
+def check_slim():
+    if (
+        subprocess.call(
+            ["slim", "--version"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        != 0
+    ):
+        click.echo(
+            click.style(
+                "\n[Prepare] please install slim first, \
+            you can use command `curl -sL https://raw.githubusercontent.com/slimtoolkit/slim/master/scripts/install-slim.sh | sudo -E bash - `.",
+                fg="red",
+            )
+        )
+        return PUBLISH_FAILED
+    return PUBLISH_SUCCESS
 
 
 def create_builder():
