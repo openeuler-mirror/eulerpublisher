@@ -28,8 +28,7 @@ IMAGE_INFO_PATH_FORMAT="{0}/doc/image-info.yml"
 PATH_CHECK_TABLE_HEADER=["Image Name", "File Path", "Path Check Result"]
 IMAGE_INFO_CHECK_TABLE_HEADER=["Image Name", "Image-info Item", "Format Check Result"]
 IMAGE_EXTENSIONS = ['.jpeg', '.jpg', '.png', '.gif', '.bmp', '.tiff', '.tif', '.webp', '.svg', '.heif', '.heic']
-IMAGE_INFO_MULTI_LINE = ["environment", "tags", "download", "usage"]
-IMAGE_INFO_SINGLE_LINE = ["license", "similar_packages", "dependency", "description", "category", "name"]
+IMAGE_INFO_ATTR_KEY = ["name", "category", "description", "environment:|", "tags:|", "download:|", "usage:|", "license", "similar_packages", "dependency"]
 
 def _request(url: str):
     cnt = 0
@@ -133,10 +132,10 @@ def _check_file_path(self):
         else:
             continue
         if os.path.exists(check_path):
-            table.add_row([contents[0], check_path, click.style("pass", fg="green")])
+            table.add_row([contents[0], file, click.style("pass", fg="green")])
         else:
             total_check_result = 1
-            table.add_row([contents[0], check_path, click.style("unpass", fg="red")])
+            table.add_row([contents[0], file, click.style("unpass", fg="red")])
     print(table)
     return total_check_result
 
@@ -151,26 +150,26 @@ def _check_image_content(self):
             continue
         contents = file.split("/")
         with open(file, "r") as f:
-            image_content = yaml.safe_load(f)
+            # check yml format
+            yaml.safe_load(f)
+            # read image-info.yml line by line
+            f.seek(0)
+            lines = f.readlines()
+            new_lines = []
+            for line in lines:
+                line = line.replace(" ", "")
+                if ":|" in line:
+                    new_lines.append(line.rstrip())
+                else:
+                    new_lines.append(line.split(":")[0])
         try:
-            for key in IMAGE_INFO_MULTI_LINE:
-                result = click.style("pass", fg="green")
-                value = image_content.get(key)
-                if not isinstance(value, str):
-                    value = json.dumps(value)
-                if value.find("\n") < 0:
+            for key in IMAGE_INFO_ATTR_KEY:
+                if key in new_lines:
+                    result = click.style("pass", fg="green")
+                else:
                     total_check_result = 1
                     result = click.style("unpass", fg="red")
-                table.add_row([contents[0], key, result])
-            for key in IMAGE_INFO_SINGLE_LINE:
-                result = click.style("pass", fg="green")
-                value = image_content.get(key)
-                if not isinstance(value, str):
-                    value = json.dumps(value)
-                if value.find("\n") >= 0:
-                    total_check_result = 1
-                    result = click.style("unpass", fg="red")
-                table.add_row([contents[0], key, result])
+                table.add_row([contents[0], key.replace(":", "").replace("|", ""), result])
         except yaml.YAMLError as e:
             raise click.echo(click.style(
                 f"Error in YAML file : {file} : {e}", fg="red"
