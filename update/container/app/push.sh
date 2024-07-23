@@ -21,6 +21,6 @@ python3 setup.py install
 sudo -E python3 update/container/app/update.py \
 	-pr ${giteePullRequestIid} \
     -sr ${giteeRepoName} \
-    -su ${giteeSourceRepoUrl} \
-    -br ${giteeSourceBranch} \
+    -br ${giteeTargetBranch} \
+    -su ${giteeTargetRepoUrl} \
     -op push
