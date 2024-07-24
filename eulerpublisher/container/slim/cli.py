@@ -8,31 +8,35 @@ import eulerpublisher.publisher.publisher as pb
 from eulerpublisher.container.base.base import OePublisher
 
 
-# @click.group(
-#     name="slim",
-#     help="Command for analyzing and slimming images"
-# )
-# def group():
-#     pass
 
+
+#静态分析Dockerflie
 @click.command(
-    name="analyze",
-    help="Show what's in the container image and reverse engineer its Dockerfile"
+    name="lint",
+    help=" Inspect container instructions in Dockerfile."
 )
 @click.option(
-    "-i",
-    "--image",
+    "-r",
+    "--report",
+    required=False,
+    default="lint.report.json",
+    show_default=True,
+    help="Target location where to save the executed command results."
+    ,
+)
+@click.option(
+    "-t",
+    "--target",
     required=True,
-    help="Image ID"
+    help="Path of Dockerfile"
     ,
 )
 
-def analyze(image):
+def lint(report, target):
     if pb.check_slim() == pb.PUBLISH_FAILED:
-
         sys.exit(1)
     ret = subprocess.call(
-        f"slim xray --target {image}"
+        f"slim --report {report} lint --target {target}"
         ,
         shell=True
     )
@@ -43,9 +47,91 @@ def analyze(image):
         sys.exit(0)
 
 
+#静态分析镜像
+@click.command(
+    name="analyze",
+    help="Show what's in the container image and reverse engineer its Dockerfile."
+)
+@click.option(
+    "-r",
+    "--report",
+    required=False,
+    default="analyze.report.json",
+    show_default=True,
+    help="Target location where to save the executed command results."
+    ,
+)
+@click.option(
+    "-i",
+    "--image",
+    required=True,
+    help="Image ID"
+    ,
+)
+
+def analyze(report, image):
+    if pb.check_slim() == pb.PUBLISH_FAILED:
+        sys.exit(1)
+    ret = subprocess.call(
+        f"slim --report {report} xray --target {image}"
+        ,
+        shell=True
+    )
+
+    if ret != pb.PUBLISH_SUCCESS:
+        sys.exit(1)
+    else:
+        sys.exit(0)
+
+#动态分析镜像
+@click.command(
+    name="profile",
+    help="Collect fat image information and generate a fat container report"
+)
+@click.option(
+    "-r",
+    "--report",
+    required=False,
+    default="profile.report.json",
+    show_default=True,
+    help="Target location where to save the executed command results."
+    ,
+)
+@click.option(
+    "-i",
+    "--image",
+    required=True,
+    help="Image ID"
+    ,
+)
+
+def profile(report, image):
+    if pb.check_slim() == pb.PUBLISH_FAILED:
+        sys.exit(1)
+    ret = subprocess.call(
+        f"slim --report {report} profile --target {image}"
+        ,
+        shell=True
+    )
+
+    if ret != pb.PUBLISH_SUCCESS:
+        sys.exit(1)
+    else:
+        sys.exit(0)
+
+#镜像瘦身
 @click.command(
     name="slim",
     help="Reduce the image size without compromising functionality."
+)
+@click.option(
+    "-r",
+    "--report",
+    required=False,
+    default="slim.report.json",
+    show_default=True,
+    help="Target location where to save the executed command results."
+    ,
 )
 @click.option(
     "-i",
@@ -70,31 +156,31 @@ def analyze(image):
     help="Enable HTTP probe to check if services are up in the slimmed image (default: True).",
 )
 
-def slim(image, tag, http_probe):
+def slim(report, image, tag, http_probe):
     if pb.check_slim() == pb.PUBLISH_FAILED:
         sys.exit(1)
 
     ret = subprocess.call(
-        f"slim build --target {image} --tag {tag} --http-probe={http_probe}"
+        f"slim --report {report} build --target {image} --tag {tag} --http-probe={http_probe}"
         ,
         shell=True
     )
 
     if ret != pb.PUBLISH_SUCCESS:
-        print("构建失败,尝试关闭http-probe")
+        click.echo("构建失败,尝试关闭http-probe")
         ret = subprocess.call(
-        f"slim build --target {image} --tag {tag} --http-probe=false"
+        f"slim --report {report} build --target {image} --tag {tag} --http-probe=false"
         ,
         shell=True
         )
         if ret != pb.PUBLISH_SUCCESS:
-            print("构建失败")
+            click.echo("构建失败")
             sys.exit(1)
         else:
-            print("构建成功")
+            click.echo("构建成功")
             sys.exit(0)
     else:
-        print("构建成功")
+        click.echo("构建成功")
         sys.exit(0)
 
 
