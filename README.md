@@ -13,11 +13,12 @@ pip install eulerpublisher
 ```
 
 ## 环境依赖
-1.EulerPublisher实现多平台容器镜像构建功能依赖于docker和qemu，安装方式如下：
+1.EulerPublisher实现多平台容器镜像构建功能依赖于docker和qemu，实现镜像分析与瘦身依赖于slim，安装方式如下：
 
 ```
 yum install qemu-img
 yum install docker
+curl -sL https://raw.githubusercontent.com/slimtoolkit/slim/master/scripts/install-slim.sh | sudo -E bash -
 ```
 多平台镜像构建使用`docker buildx`，安装的docker版本需满足`>= 19.03`或单独安装`buildx`插件，单独安装`docker buildx`方法如下：
 
@@ -37,7 +38,7 @@ pip install -r ./requirements.txt
 # 下载shUnit2源码
 curl -fSL -o shunit2.tar.gz https://github.com/kward/shunit2/archive/refs/tags/v2.1.8.tar.gz
 
-# 解压并移动至/usr/share/shunit2目录
+# 解压并移动至/usr/re/shunit2目录
 mkdir -p /usr/share/shunit2
 tar -xvf shunit2.tar.gz -C /usr/share/shunit2 --strip-components=1
 ```
@@ -204,3 +205,54 @@ curl
 eulerpublisher cloudimg aws publish -v {VERSION} -a {ARCH} -b {BUCKET} -r {REGION} -p {RPMLIST}
 ```
 生成的AMI满足AWS Marketplace云镜像发布的要求，如有需要可进行镜像产品发布。由于AWS Marketplace存在人工审核环节，无法通过自动化流程一键发布，用户需手动操作申请发布AMI，见[https://aws.amazon.com/marketplace](https://aws.amazon.com/marketplace/partners/management-tour)。
+### 3. 镜像分析与优化
+#### Dockerfile静态分析
+
+本部分介绍如何使用EulerPublisher对Dockerfile执行静态分析。`lint` 命令会分析你的 Dockerfile，对 Dockerfile 中的指令进行检查。此命令会提供警告，并检查错误，同时为你提供 Dockerfile 中指令的相关信息。它会检查缺失的文件、无效的指令或命令，以及 Dockerfile 中不必要的或难以管理的层。同时，`lint` 命令还会检查 .dockerignore 文件，确保在构建镜像时正确排除不必要的文件和目录。
+
+```
+eulerpublisher container lint -r {REPORTPATH} -t {DOCKERFILEPATH}
+```
+   `REPORTPATH`为Dockerfile静态分析生成报告的路径，默认在当前目录生成`lint.report.json`。`DOCKERFILEPATH`为需要分析的Dockerfile文件路径。使用示例如下
+```
+eulerpublisher container lint -r ./report/lint.report.json -t Dockerfile 
+```
+#### 镜像静态分析
+
+本部分介绍如何使用EulerPublisher对目标容器镜像执行静态分析（包括对镜像的 Dockerfile 进行“逆向工程”）。`analyze` 命令主要用于静态分析 Docker 镜像。它会深入探索 Docker 镜像的各层、使用的命令、文件、库、可执行文件以及当 Docker 镜像构建时将在工作环境中产生的变更。这个命令能够帮助逆向工程出 Dockerfile，即从目标 Docker 镜像反推出 Dockerfile。同时，`analyze` 也会提供对象文件的大小信息，以及容器空间中可能存在的浪费情况。
+
+```
+eulerpublisher container analyze -r {REPORTPATH} -i {IMAGEID}
+```
+   `REPORTPATH`为镜像静态分析生成报告的路径，默认在当前目录生成`analyze.report.json`。`IMAGEID`为本地镜像的`image id`或`repository:tag`，当`IMAGEID`不存在时会直接从dockerhub拉取，因此有出现镜像不存在而无法分析的错误。使用示例如下
+```
+eulerpublisher container analyze -i nginx:latest
+```
+
+  可以通过终端打印的`artifacts.location`获取逆向Dockerfile路径。默认路径为'/tmp/slim-state/.slim-state/images/{IMAGEID}/artifacts' ，IMAGEID为镜像ID的完整十六进制 SHA-256 哈希值，可通过```docker ps -a --no-trunc```查看。示例路径如下
+
+```
+cmd=xray info=results '/tmp/slim-state/.slim-state/images/605c77e624ddb75e6110f997c58876baa13f8754486b461117934b24a9dc3a85/artifacts' 
+```
+#### 镜像动态分析
+
+本部分介绍如何使用EulerPublisher对目标容器镜像执行动态分析（包括对镜像的 Dockerfile 进行“逆向工程”）。`profile` 命令进行更为深入的动态分析。它不仅分析 Docker 镜像，还会运行该镜像并创建一个容器，然后对这个容器进行分析和探测。这意味着 `profile` 命令会在实际运行环境中收集数据，从而获得比 `analyze` 更多的信息。此外，`profile` 命令还默认提供了高级的 HTTP 探针功能，可以检查 Docker 容器的可达性和响应情况。与`analyze`命令一样，`profile`也会为镜像生成逆向Dockerfile。
+
+```
+eulerpublisher container profile -r {REPORTPATH} -i {IMAGEID}
+```
+   `REPORTPATH`为镜像动态分析生成报告的路径，默认在当前目录生成`profile.report.json`。`IMAGEID`为本地镜像的`image id`或`repository:tag`，当`IMAGEID`不存在时会直接从dockerhub拉取，因此有出现镜像不存在而无法分析的错误。使用示例如下
+```
+eulerpublisher container profile -r nginx.profile.report.json -i nginx:latest
+```
+#### 镜像优化
+
+本部分介绍如何使用EulerPublisher分析目标容器镜像及其应用程序，并从中构建优化的镜像。`slim` 命令会分析 Docker 镜像，移除不需要的层、文件和依赖项，从而显著减小镜像的大小，提高加载和部署速度，节省存储空间和网络传输时间，加强镜像安全性。
+
+```
+eulerpublisher container slim -r {REPORTPATH} -i {IMAGEID} -t {repository:tag} -p {TRUE/FALSE}
+```
+   `REPORTPATH`为镜像优化生成报告的路径，默认在当前目录生成`slim.report.json`。`IMAGEID`为本地镜像的`image id`或`repository:tag`，当`IMAGEID`不存在时会直接从dockerhub拉取，因此有出现镜像不存在而无法分析的错误。`repository:tag`为优化后镜像的名称。`-p`指示是否开启http探测，目标镜像并未暴露端口时（如hello-world应用），请关闭此选项。使用示例如下
+```
+eulerpublisher container slim -r nginx.slim.report.json -i d2c94e258dcb -t nginx.slim:latest -p true
+```

@@ -86,7 +86,7 @@ class OePublisher(pb.Publisher):
         os.makedirs(CACHE_DATA_PATH, exist_ok=True)
         os.chdir(CACHE_DATA_PATH)
         os.makedirs(self.version, exist_ok=True)
-        shutil.copy2(self.dockerfile, self.version + "/Dockerfile")
+        # shutil.copy2(self.dockerfile, self.version + "/Dockerfile")
         os.chdir(self.version)
 
         for arch in pb.ARCHS:
@@ -142,6 +142,8 @@ class OePublisher(pb.Publisher):
     def build_and_push(self):
         try:
             os.chdir(CACHE_DATA_PATH)
+            shutil.copy2(self.dockerfile, self.version + "/Dockerfile")
+
             # ensure qemu is installed so that it can build multi-platform images
             if pb.check_qemu() != pb.PUBLISH_SUCCESS:
                 return pb.PUBLISH_FAILED
