@@ -32,8 +32,8 @@ sudo passwd -d root
 sudo sed -i 's/root:/&*/'  /etc/shadow
 
 # disable root and pwauth, enable `sudo` for user-openeuler
-sed -i "/groups:/s/.*/    groups: [sudo, wheel, adm, systemd-journal]/" /etc/cloud/cloud.cfg
-sed -i '/groups: / a\    sudo: ["ALL=(ALL) NOPASSWD:ALL"]'              /etc/cloud/cloud.cfg
+sed -i "/groups:/s/.*/     groups: [sudo, wheel, adm, systemd-journal]/" /etc/cloud/cloud.cfg
+sed -i '/groups: / a\     sudo: ["ALL=(ALL) NOPASSWD:ALL"]'              /etc/cloud/cloud.cfg
 
 # disable Apparmor
 echo "GRUB_CMDLINE_LINUX_DEFAULT=\"apparmor=0\"" >> /etc/default/grub
@@ -43,3 +43,4 @@ if [[ "$(uname -m)" == "x86_64" ]]; then
 elif [[ "$(uname -m)" == "aarch64" ]]; then
     grub2-mkconfig -o /boot/efi/EFI/openEuler/grub.cfg
 fi
+
