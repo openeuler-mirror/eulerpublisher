@@ -155,7 +155,7 @@ Using `eulerpublisher` the general cloud image construction on the local executo
 eulerpublisher cloudimg gen prepare --version {VERSION} --arch {ARCH}
 ```
 
-All parameters in this command need to be explicitly specified, `--version` which is the openEuler version number of the target image, specifying the architecture type of the target image, `--arch` which is currently only supported `aarch64` or `x86_86` , the function of this step is to obtain the base image from the openEuler repo for the next customization.
+All parameters in this command need to be explicitly specified, `--version` which is the openEuler version number of the target image, specifying the architecture type of the target image, `--arch` which is currently only supported `aarch64` or `x86_64` , the function of this step is to obtain the base image from the openEuler repo for the next customization.
 
 - **Step 2: Build a generic image** 
 
@@ -195,7 +195,7 @@ where , `key_id` and `secret_key` is a pair of keys used for access authenticati
 eulerpublisher cloudimg aws prepare --version {VERSION} --arch {ARCH} --bucket {BUCKET}
 ```
 
-All parameters in this command need to be specified explicitly, `--version` which is the openEuler version number of the target AMI, `--arch` specifying the schema type of the AMI, currently only supported `aarch64` or `x86_86` , `--bucket` is the bucket name, and the bucket is used to save the `prepare` uploaded `raw` original image, `bucket` which is `aws configure` configured in `region` Inside.
+All parameters in this command need to be specified explicitly, `--version` which is the openEuler version number of the target AMI, `--arch` specifying the schema type of the AMI, currently only supported `aarch64` or `x86_64` , `--bucket` is the bucket name, and the bucket is used to save the `prepare` uploaded `raw` original image, `bucket` which is `aws configure` configured in `region` Inside.
 
 When this command is executed, an original image named :openEuler-22.03-LTS-SP2-x86_64.raw `openEuler-{VERSION}-{ARCH}.raw` appears `bucket` in the corresponding in AWS `region` .
 

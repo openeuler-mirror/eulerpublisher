@@ -146,7 +146,7 @@ EulerPublisher使用[shUnit2](https://github.com/kward/shunit2)测试框架。�
 ```
 eulerpublisher cloudimg gen prepare -v {VERSION} -a {ARCH}
 ```
-此命令中所有参数均需显式指定，`-v`是构建目标镜像的openEuler版本号，`-a`指定构建目标镜像的架构类型，目前仅支持`aarch64`或`x86_86`，
+此命令中所有参数均需显式指定，`-v`是构建目标镜像的openEuler版本号，`-a`指定构建目标镜像的架构类型，目前仅支持`aarch64`或`x86_64`，
 该步骤实现的功能是从openEuler Repo获取基础镜像，用于下一步定制。
 -  **步骤2** 、构建通用镜像
 ```
@@ -177,7 +177,7 @@ $ aws configure
 ```
 eulerpublisher cloudimg aws prepare -v {VERSION} -a {ARCH} -b {BUCKET}
 ```
-此命令中所有参数均需显式指定，`-v`是构建目标AMI的openEuler版本号，`-a`指定构建AMI的架构类型，目前仅支持`aarch64`或`x86_86`，
+此命令中所有参数均需显式指定，`-v`是构建目标AMI的openEuler版本号，`-a`指定构建AMI的架构类型，目前仅支持`aarch64`或`x86_64`，
 `-b`是存储桶名，存储桶用于保存`prepare`上传的原始`raw`镜像，`bucket`在`aws configure`配置的`region`内。
 
 执行此命令后，会在AWS对应`region`的`bucket`中出现一个命名为`openEuler-{VERSION}-{ARCH}.raw`的原始镜像（例如：openEuler-22.03-LTS-SP2-x86_64.raw）。
