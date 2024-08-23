@@ -42,7 +42,7 @@ curl -fSL -o shunit2.tar.gz https://github.com/kward/shunit2/archive/refs/tags/v
 mkdir -p /usr/share/shunit2
 tar -xvf shunit2.tar.gz -C /usr/share/shunit2 --strip-components=1
 ```
-
+💡Tips: 推荐使用脚本`install.sh`、`uninstall.sh`进行一键安装、卸载。
 
 ## 使用说明
 
