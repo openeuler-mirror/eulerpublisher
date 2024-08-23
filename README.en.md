@@ -42,6 +42,7 @@ Multi-platform image is built and used `docker buildx` , and the installed docke
 ```
 pip install -r ./requirement.txt
 ```
+💡Tips: Use the scripts `install.sh` and `uninstall.sh` for one-click installation and uninstallation.
 
 ## Directions for use
 
