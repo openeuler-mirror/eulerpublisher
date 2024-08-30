@@ -256,3 +256,42 @@ eulerpublisher container slim -r {REPORTPATH} -i {IMAGEID} -t {repository:tag} -
 ```
 eulerpublisher container slim -r nginx.slim.report.json -i d2c94e258dcb -t nginx.slim:latest -p true
 ```
+
+### 4. 自动构建AI镜像
+本章节主要介绍在上游AI新版本镜像发布后，通过运行构建脚本将新版AI镜像发布到openEuler官方镜像仓库，目前阶段主要面向Ascend相关AI镜像。
+
+- Gitee账号配置
+	```bash
+  export GITEE_API_TOKEN={Gitee-Token}
+	export GITEE_USER_NAME={Gitee-User}
+  export GITEE_USER_EMAIL={Gitee-Email}
+	```
+ - 安装工具依赖
+	```bash
+	dnf -y install git python3-pip
+	```
+- 安装Python依赖
+	```bash
+	pip3 install click requests gitpython
+	```
+- 下载项目
+	```bash
+	git clone https://gitee.com/baigj/eulerpublisher.git
+	```
+- 执行脚本
+	```bash
+	python3 {pwd}/eulerpublisher/update/container/auto/update.py -ov 24.03-lts -an cann -sv 8.0.RC1
+	```
+- 参数说明
+    | 参数 | 是否必选 | 示例 |  描述 |
+    |--|--|--|--|
+    | `-ov` | 是 | 24.03-lts | openEuler版本。 |
+    | `-sv` | 是 | 8.0.RC1 | SKD版本。 |
+    | `-an` | 是 | cann | 应用名称，暂时只支持CANN、MindSpore和PyTorch。 |
+    | `-sn` | 否 | cann | SDK名称，默认是CANN， 暂时只支持CANN。 |
+    | `-fv` | 否 | 1.0.0 | AI框架版本，包含PyTorch和MindSpore相关版本。 |
+    | `-pv` | 否 | 3.10 | Python版本，默认是3.8。 |
+    | `-cv` | 否 | 910b | AI芯片版本，默认是910b。 |
+    | `-ps` | 否 | /tmp/cann.sh | Python安装脚本，CANN镜构建用，默认是最新CANN镜像目录下的脚本。 |
+    | `-cs` | 否 | /tmp/python.sh | CANN安装脚本，CANN镜构建用，默认是最新CANN镜像目录下的脚本。 |
+    | `-dp` | 否 | /tmp/Dockerfile | 升级应用镜像时，可以指定应用镜像Dockerfile，默认是当前镜像最新版本的Dockerfile。 |
