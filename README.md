@@ -38,7 +38,7 @@ pip install -r ./requirements.txt
 # 下载shUnit2源码
 curl -fSL -o shunit2.tar.gz https://github.com/kward/shunit2/archive/refs/tags/v2.1.8.tar.gz
 
-# 解压并移动至/usr/re/shunit2目录
+# 解压并移动至/usr/share/shunit2目录
 mkdir -p /usr/share/shunit2
 tar -xvf shunit2.tar.gz -C /usr/share/shunit2 --strip-components=1
 ```
