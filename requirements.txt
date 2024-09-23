@@ -7,3 +7,6 @@ docker-py
 prettytable
 pyyaml
 wget
+huaweicloudsdkims
+tencentcloud-sdk-python-cvm
+alibabacloud_ecs20140526

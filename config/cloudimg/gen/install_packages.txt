@@ -1,7 +1,0 @@
-cloud-init
-cloud-utils-growpart
-wget
-tar
-hostname
-unzip
-make

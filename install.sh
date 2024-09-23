@@ -12,7 +12,7 @@ else
 fi
 
 # 安装eulerpublisher
-sudo python setup.py install --record install_log.txt
+sudo python3 setup.py install --record install_log.txt
 
 # 安装qemu
 sudo yum install -y qemu-img
