@@ -53,8 +53,10 @@ if [[ ! -z ${CLOUD_INIT_CONFIG} ]]; then
 fi
 
 # enable `sudo` for user-openeuler
-sudo chroot $MOUNT_DIR sed -i -E "/groups:/s/^([[:blank:]]*).*/\1groups: [sudo, wheel, adm, systemd-journal]/" /etc/cloud/cloud.cfg
-sudo chroot $MOUNT_DIR sed -i -E '/groups:/s/^([[:blank:]]*).*/&\n\1sudo: ["ALL=(ALL) NOPASSWD:ALL"]/' /etc/cloud/cloud.cfg
+sudo chroot $MOUNT_DIR sed -i '/package_update_upgrade_install/d'                                          /etc/cloud/cloud.cfg
+sudo chroot $MOUNT_DIR sed -i -E 's/^([[:space:]]*)- scripts_user/&\n\1- package_update_upgrade_install/'  /etc/cloud/cloud.cfg
+sudo chroot $MOUNT_DIR sed -i -E 's/^([[:space:]]*)group.*/\1groups: [sudo, wheel, adm, systemd-journal]/' /etc/cloud/cloud.cfg
+sudo chroot $MOUNT_DIR sed -i -E 's/^([[:space:]]*)group.*/&\n\1sudo: ["ALL=(ALL) NOPASSWD:ALL"]/'         /etc/cloud/cloud.cfg
 
 sudo sync
 sleep 3

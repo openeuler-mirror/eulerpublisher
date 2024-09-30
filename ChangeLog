@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* refactor: merge the build and push process for AWS and GEN cloud image
 * docs: add tips to README.md and README.en.md
 * feat: add scripts for automatic installation and uninstallation
 * fix: modify config/cloudimg/script/aws\_install.sh
