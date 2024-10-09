@@ -50,12 +50,6 @@ sudo chroot $MOUNT_DIR yum clean all
 
 # for security needed by cloud provider
 sudo cp -f ${CLOUD_INIT_CONFIG} ${MOUNT_DIR}/etc/cloud/cloud.cfg.d/
-sudo chroot ${MOUNT_DIR} passwd -d root
-sudo chroot ${MOUNT_DIR} sed -i 's/root:/&*/'                                                                /etc/shadow
-sudo chroot ${MOUNT_DIR} sed -i '/PermitRootLogin/d'                                                         /etc/ssh/sshd_config
-sudo chroot ${MOUNT_DIR} sed -i '$aPermitRootLogin no'                                                       /etc/ssh/sshd_config
-sudo chroot ${MOUNT_DIR} sed -i '/PasswordAuthentication/d'                                                  /etc/ssh/sshd_config
-sudo chroot ${MOUNT_DIR} sed -i '$aPasswordAuthentication no'                                                /etc/ssh/sshd_config
 sudo chroot ${MOUNT_DIR} sed -i "/MACs/d"                                                                    /etc/ssh/sshd_config
 sudo chroot ${MOUNT_DIR} sed -i '$aMACs hmac-sha2-512,hmac-sha2-256'                                         /etc/ssh/sshd_config
 sudo chroot ${MOUNT_DIR} sed -i "/Ciphers/d"                                                                 /etc/ssh/sshd_config
