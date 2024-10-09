@@ -154,6 +154,7 @@ eulerpublisher cloudimg build -t {TARGET} -v {VERSION} -a {ARCH}
 此命令中`{TARGET}`指定目标云厂商，其余参数作用与步骤1命令中参数作用一致。
 执行此命令后，会在执行机`/tmp/eulerpublisher/cloudimg/gen/output/`目录下生成一个命名为`openEuler-{VERSION}-{ARCH}-{TIME}.qcow2`的目标镜像（例如：`openEuler-22.03-LTS-SP2-x86_64-20230802_010324.qcow2`），该镜像满足目前大多数主流公有云厂商云市场镜像发布的技术要求。
 -  **步骤3** 、上传云镜像
+
 执行本步之前，需要预先使用云厂商提供的命令行工具进行配置，完成身份认证，配置信息如下：
 ```
 # 华为云 OBS存储命令行工具
@@ -188,14 +189,14 @@ $ aws configure
 ```
 其中，`key_id`和`secret_key`是一对用于访问认证的密钥对，生成方法参见云厂商的官方文档（例如，[AWS管理访问密钥](https://docs.aws.amazon.com/zh_cn/IAM/latest/UserGuide/id_credentials_access-keys.html?icmpid=docs_iam_console#Using_CreateAccessKey)，[华为云管理访问密钥](https://support.huaweicloud.com/usermanual-ca/ca_01_0003.html)，[阿里云管理访问密钥](https://help.aliyun.com/zh/ram/user-guide/create-an-accesskey-pair)，[腾讯云管理访问密钥](https://cloud.tencent.com/document/product/598/40488)），`endpoint`是存储桶的接入点。
 ```
-export HUAWEICLOUD_SDK_AK=<key_id>
-export HUAWEICLOUD_SDK_SK=<secret_key>
-export ALIBABACLOUD_SDK_AK=<key_id>
-export ALIBABACLOUD_SDK_SK=<secret_key>
-export TENCENTCLOUD_SDK_AK=<key_id>
-export TENCENTCLOUD_SDK_SK=<secret_key>
-export AWS_SDK_AK=<key_id>
-export AWS_SDK_SK=<secret_key>
+export HUAWEICLOUD_SDK_AK="key_id"
+export HUAWEICLOUD_SDK_SK="secret_key"
+export ALIBABACLOUD_SDK_AK="key_id"
+export ALIBABACLOUD_SDK_SK="secret_key"
+export TENCENTCLOUD_SDK_AK="key_id"
+export TENCENTCLOUD_SDK_SK="secret_key"
+export AWS_SDK_AK="key_id"
+export AWS_SDK_SK="secret_key"
 ```
 完成上述步骤后，可执行如下命令上传云镜像
 ```
