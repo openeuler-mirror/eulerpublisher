@@ -9,7 +9,7 @@ import time
 import yaml
 
 
-# global varibles
+# global variables
 PUBLISH_FAILED = 1
 PUBLISH_SUCCESS = 0
 ARCHS = ["x86_64", "aarch64"]
@@ -150,7 +150,7 @@ def login_registry(registry, multi):
         env = yaml.safe_load(f)
 
     """
-    1. Login all taget registries.
+    1. Login all target registries.
     2. Before logging in, all users and their passwords must
        be set into the environment
     """
