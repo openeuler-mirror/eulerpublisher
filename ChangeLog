@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* fix: modify resource/config/gen\_install.sh and resource/config/aws\_install.sh
 * refactor: merge the build and push process for AWS and GEN cloud image
 * docs: add tips to README.md and README.en.md
 * feat: add scripts for automatic installation and uninstallation

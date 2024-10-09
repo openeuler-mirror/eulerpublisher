@@ -29,6 +29,8 @@ from eulerpublisher.publisher import OPENEULER_REPO
 DATA_PATH = "/tmp/eulerpublisher/cloudimg/data/"
 CONFIG_PATH = EP_PATH + "resource/cloudimg/config/"
 SCRIPT_PATH = EP_PATH + "resource/cloudimg/script/"
+CLOUD_INIT_CONFIG = CONFIG_PATH + "openeuler.cfg"
+DEFAULT_RPMLIST = EP_PATH + "resource/cloudimg/install_packages.txt"
 AWS_ROLE_POLICY = CONFIG_PATH + "role-policy.json"
 AWS_TRUST_POLICY = CONFIG_PATH + "trust-policy.json"
 
@@ -281,8 +283,8 @@ def _push_aws(arch, version, bucket, region, image):
   image_id = resp["ImageId"]
 
 class CloudimgPublisher(pb.Publisher):
-  def __init__(self, target="", version="", arch="", bucket="", region="", image=""):
-    # 目标公有云
+  def __init__(self, target="", version="", arch="", rpmlist="", bucket="", region="", image=""):
+    # 目标云厂商
     self.target = target
     # 镜像版本号
     self.version = version.upper()
@@ -295,7 +297,12 @@ class CloudimgPublisher(pb.Publisher):
         + str(platform.machine())
       )
     self.arch = arch
-    # 桶名
+    # 获取要预安装的软件包列表，不显示指定时安装默认包
+    if not rpmlist:
+        self.rpmlist = DEFAULT_RPMLIST
+    else:
+        self.rpmlist = os.path.abspath(rpmlist)
+    # 存储桶
     self.bucket = bucket
     # 地域
     self.region = region
@@ -342,8 +349,7 @@ class CloudimgPublisher(pb.Publisher):
       script = SCRIPT_PATH + "aws_install.sh"
     else:
       script = SCRIPT_PATH + "gen_install.sh"
-    config = CONFIG_PATH + "openeuler.cfg"
-    args = [qcow2_file, DATA_PATH, config]
+    args = [qcow2_file, DATA_PATH, CLOUD_INIT_CONFIG, self.rpmlist]
     if subprocess.call(["sudo", "sh", script] + args):
       click.echo(click.style("\n[Build] Failed to build cloud image.", fg="red"))
       return pb.PUBLISH_FAILED

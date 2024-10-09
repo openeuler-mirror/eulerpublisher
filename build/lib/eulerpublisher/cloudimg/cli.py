@@ -46,8 +46,9 @@ def prepare(version, arch):
   required=True,
   help="The architecture of cloud image, " "limited to `x86_64` or `aarch64`."
 )
-def build(target, version, arch):
-  obj = CloudimgPublisher(target=target, version=version, arch=arch)
+@click.option("-p", "--rpmlist", help="The packages you want to install.")
+def build(target, version, arch, rpmlist):
+  obj = CloudimgPublisher(target=target, version=version, arch=arch, rpmlist=rpmlist)
   obj.build()
 
 @group.command(name="push", help="Push generic cloud image to cloud provider.")
