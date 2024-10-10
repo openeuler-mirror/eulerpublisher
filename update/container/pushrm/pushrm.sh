@@ -6,7 +6,7 @@ readonly namespace="$2"
 readonly repo="$3"
 readonly registries="hub.oepkgs.net quay.io docker.io"
 
-# instal docker-pushrm plugin
+# install docker-pushrm plugin
 if [ ! -d "$HOME/.docker/cli-plugins" ]; then
     sudo mkdir -p "$HOME/.docker/cli-plugins"
 fi
