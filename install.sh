@@ -3,9 +3,15 @@
 set -e
 
 if [[ "$(uname -m)" == "x86_64" ]]; then
-    ARCH="x86_64"
+    AWSCLI_ARCH="x86_64"
+    OBSUTIL_ARCH="amd64"
+    COSCLI_ARCH="amd64"
+    OSSUTIL_ARCH="amd64"
 elif [[ "$(uname -m)" == "aarch64" ]]; then
-    ARCH="aarch64"
+    AWSCLI_ARCH="aarch64"
+    OBSUTIL_ARCH="arm64"
+    COSCLI_ARCH="arm64"
+    OSSUTIL_ARCH="arm64"
 else
     echo "Unrecognized arch $(uname -m)"
     exit 1
@@ -22,21 +28,11 @@ sudo yum install -y qemu-img
 
 # 创建工具集目录
 mkdir -p utils
+cd utils
 
 # 安装docker
 if [[ ! $(which docker) ]]; then
-    wget https://download.docker.com/linux/static/stable/${ARCH}/docker-24.0.9.tgz -O utils/docker.tar.gz
-    mkdir -p utils/docker
-    tar -zxf utils/docker.tar.gz -C utils/docker --strip-components=1
-    sudo cp -p utils/docker/* /usr/local/bin
-    if [[ ! $(sudo grep -q docker /etc/group) ]]; then
-        sudo groupadd docker || true
-    fi
-    if [[ ! -z ${USER:-} ]]; then
-        sudo usermod -aG docker $USER || true
-    else
-        sudo usermod -aG docker openeuler || true
-    fi
+    curl -sL https://raw.githubusercontent.com/cnrancher/euler-packer/refs/heads/main/scripts/others/install-docker.sh | sudo -E bash - 
 fi
 
 # 安装slim
@@ -46,43 +42,34 @@ fi
 
 # 安装公有云厂商命令行工具
 if [[ ! $(which aws) ]]; then
-    wget https://awscli.amazonaws.com/awscli-exe-linux-${ARCH}.zip -O utils/awsutil.zip
-    unzip utils/awsutil.zip -d utils
-    sudo bash utils/aws/install
-fi
-
-if [[ "$(uname -m)" == "x86_64" ]]; then
-    ARCH="amd64"
-elif [[ "$(uname -m)" == "aarch64" ]]; then
-    ARCH="arm64"
-else
-    echo "Unrecognized arch $(uname -m)"
-    exit 1
+    wget https://awscli.amazonaws.com/awscli-exe-linux-${AWSCLI_ARCH}.zip -O awsutil.zip
+    unzip awsutil.zip
+    sudo bash aws/install
 fi
 
 if [[ ! $(which obsutil) ]]; then
-    wget https://obs-community.obs.cn-north-1.myhuaweicloud.com/obsutil/current/obsutil_linux_${ARCH}.tar.gz -O utils/obsutil.tar.gz
-    mkdir -p utils/obsutil
-    tar -xvf utils/obsutil.tar.gz -C utils/obsutil --strip-components=1
-    sudo cp -p utils/obsutil/obsutil /usr/local/bin
+    wget https://obs-community.obs.cn-north-1.myhuaweicloud.com/obsutil/current/obsutil_linux_${OBSUTIL_ARCH}.tar.gz -O obsutil.tar.gz
+    mkdir -p obsutil
+    tar -xvf obsutil.tar.gz -C obsutil --strip-components=1
+    sudo cp -p obsutil/obsutil /usr/local/bin
 fi
 
 if [[ ! $(which coscli) ]]; then
-    wget https://cosbrowser.cloud.tencent.com/software/coscli/coscli-v1.0.1-linux-${ARCH} -O utils/coscli
-    chmod 755 utils/coscli
-    sudo cp -p utils/coscli /usr/local/bin
+    wget https://cosbrowser.cloud.tencent.com/software/coscli/coscli-v1.0.1-linux-${COSCLI_ARCH} -O coscli
+    chmod 755 coscli
+    sudo cp -p coscli /usr/local/bin
 fi
 
 if [[ ! $(which ossutil) ]]; then
-    wget https://gosspublic.alicdn.com/ossutil/1.7.19/ossutil-v1.7.19-linux-${ARCH}.zip -O utils/ossutil.zip
-    mkdir -p utils/ossutil
-    unzip -j utils/ossutil.zip -d utils/ossutil
-    sudo cp -p utils/ossutil/ossutil /usr/local/bin
+    wget https://gosspublic.alicdn.com/ossutil/1.7.19/ossutil-v1.7.19-linux-${OSSUTIL_ARCH}.zip -O ossutil.zip
+    mkdir -p ossutil
+    unzip -j ossutil.zip -d ossutil
+    sudo cp -p ossutil/ossutil /usr/local/bin
 fi
 
 # 安装shUnit2
 if [[ ! -e "/usr/share/shunit2" ]]; then
-    wget https://github.com/kward/shunit2/archive/refs/tags/v2.1.8.tar.gz -O utils/shunit2.tar.gz
+    wget https://github.com/kward/shunit2/archive/refs/tags/v2.1.8.tar.gz -O shunit2.tar.gz
     mkdir -p /usr/share/shunit2
-    tar -xvf utils/shunit2.tar.gz -C /usr/share/shunit2 --strip-components=1
+    tar -xvf shunit2.tar.gz -C /usr/share/shunit2 --strip-components=1
 fi
