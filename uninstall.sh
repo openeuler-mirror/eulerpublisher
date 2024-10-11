@@ -5,7 +5,7 @@ set -e
 # 卸载eulerpublisher 
 cat install_log.txt | sudo xargs rm -rf
 rm -rf install_log.txt
-rm -rf build eulerpublisher.egg-info .egg
+rm -rf build eulerpublisher.egg-info .eggs
 
 # 卸载python依赖 
 sudo pip uninstall -yr requirements.txt
