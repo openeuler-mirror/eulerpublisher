@@ -7,19 +7,19 @@ from eulerpublisher.cloudimg import cli as cloudimg_cli
 
 @click.group()
 def entrance():
-  pass
+    pass
 
 
 def _add_commands():
-  # Unified interface for extension.
-  entrance.add_command(container_cli.group)
-  entrance.add_command(cloudimg_cli.group)
+    # Unified interface for extension.
+    entrance.add_command(container_cli.group)
+    entrance.add_command(cloudimg_cli.group)
 
 
 def main():
-  _add_commands()
-  entrance()
+    _add_commands()
+    entrance()
 
 
 if __name__ == "__main__":
-  main()
+    main()

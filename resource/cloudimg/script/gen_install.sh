@@ -13,22 +13,22 @@ sudo mkdir -p $MOUNT_DIR
 sudo mkdir -p $OUTPUT_DIR
 
 if [[ $(uname) == "Darwin" ]]; then
-  echo "MacOS is not supported"
-  exit 1
+    echo "MacOS is not supported"
+    exit 1
 fi
 
 sudo modprobe nbd max_part=3
 nbd_mount=$(mount | grep nbd0 || echo -n "")
 if [[ ! -z "${nbd_mount}" ]]; then
-  sudo umount -f ${MOUNT_DIR}/dev
-  sudo umount -f ${MOUNT_DIR}/proc
-  sudo umount -f ${MOUNT_DIR}/sys
-  sudo umount -f ${MOUNT_DIR}
+    sudo umount -f ${MOUNT_DIR}/dev
+    sudo umount -f ${MOUNT_DIR}/proc
+    sudo umount -f ${MOUNT_DIR}/sys
+    sudo umount -f ${MOUNT_DIR}
 fi
 
 nbd_loaded=$(lsblk | grep nbd0 || echo -n "")
 if [[ ! -z "${nbd_loaded}" ]]; then
-  sudo qemu-nbd -d "${DEV_NUM}"
+    sudo qemu-nbd -d "${DEV_NUM}"
 fi
 sudo qemu-nbd -c "${DEV_NUM}" "${TMP_DATA_PATH}${OPENEULER_IMG}"
 sleep 3
@@ -54,6 +54,8 @@ sudo chroot ${MOUNT_DIR} sed -i "/MACs/d"                                       
 sudo chroot ${MOUNT_DIR} sed -i '$aMACs hmac-sha2-512,hmac-sha2-256'                                         /etc/ssh/sshd_config
 sudo chroot ${MOUNT_DIR} sed -i "/Ciphers/d"                                                                 /etc/ssh/sshd_config
 sudo chroot ${MOUNT_DIR} sed -i '$aCiphers aes256-ctr,aes192-ctr,aes128-ctr'                                 /etc/ssh/sshd_config
+sudo chroot ${MOUNT_DIR} sed -i -E "s/(disable_root: )true/\1false/"                                         /etc/cloud/cloud.cfg
+sudo chroot ${MOUNT_DIR} sed -i -E "s/(ssh_pwauth: )false/\1true/"                                           /etc/cloud/cloud.cfg
 sudo chroot ${MOUNT_DIR} sed -i -E 's/^([[:space:]]*)group.*/\1groups: [sudo, wheel, adm, systemd-journal]/' /etc/cloud/cloud.cfg
 sudo chroot ${MOUNT_DIR} sed -i -E 's/^([[:space:]]*)group.*/&\n\1sudo: ["ALL=(ALL) NOPASSWD:ALL"]/'         /etc/cloud/cloud.cfg
 
@@ -71,7 +73,7 @@ INPUT_FORMAT="${OPENEULER_IMG##*.}"
 OUTPUT_IMG_NAME="${OPENEULER_IMG%.*}-$(date +%Y%m%d_%H%M%S).qcow2"
 OUTPUT_FORMAT="${OUTPUT_IMG_NAME##*.}"
 qemu-img convert -p -c -f ${INPUT_FORMAT} -O ${OUTPUT_FORMAT} \
-  ${TMP_DATA_PATH}${OPENEULER_IMG} ${OUTPUT_DIR}${OUTPUT_IMG_NAME}
+    ${TMP_DATA_PATH}${OPENEULER_IMG} ${OUTPUT_DIR}${OUTPUT_IMG_NAME}
 
 # delete temporary data
 sudo rm -rf ${TMP_DATA_PATH}${OPENEULER_IMG}
