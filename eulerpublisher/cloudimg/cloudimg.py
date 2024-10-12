@@ -27,12 +27,12 @@ from eulerpublisher.publisher import EP_PATH
 from eulerpublisher.publisher import OPENEULER_REPO
 
 DATA_PATH = "/tmp/eulerpublisher/cloudimg/data/"
-CONFIG_PATH = EP_PATH + "resource/cloudimg/config/"
-SCRIPT_PATH = EP_PATH + "resource/cloudimg/script/"
-CLOUD_INIT_CONFIG = CONFIG_PATH + "openeuler.cfg"
-DEFAULT_RPMLIST = EP_PATH + "resource/cloudimg/install_packages.txt"
-AWS_ROLE_POLICY = CONFIG_PATH + "role-policy.json"
-AWS_TRUST_POLICY = CONFIG_PATH + "trust-policy.json"
+RESOURCE_PATH = EP_PATH + "config/cloudimg/config/"
+SCRIPT_PATH = EP_PATH + "config/cloudimg/script/"
+DEFAULT_RPMLIST = EP_PATH + "config/cloudimg/install_packages.txt"
+CLOUD_INIT_CONFIG = RESOURCE_PATH + "openeuler.cfg"
+AWS_ROLE_POLICY = RESOURCE_PATH + "role-policy.json"
+AWS_TRUST_POLICY = RESOURCE_PATH + "trust-policy.json"
 
 def _push_huaweicloud(arch, version, bucket, region, image):
     # 获取凭证信息
