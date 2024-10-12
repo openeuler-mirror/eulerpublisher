@@ -220,7 +220,7 @@ def check(name, hubnamespace, script, tag):
     type=bool,
     default=False,
     help="To show whether the tag is latest, and the image "
-    "will be taged with both `tag` and `latest` while True."
+    "will be tagged with both `tag` and `latest` while True."
 )
 @click.option(
     "-m",
