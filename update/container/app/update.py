@@ -415,6 +415,7 @@ class ContainerVerification:
 
     def publish_updates(self):
         os.chdir(self.workdir)
+        failed_tags = []
         for file in self.change_files:
             # update readme while changed file is README.md
             if os.path.basename(file) == "README.md":
@@ -437,8 +438,12 @@ class ContainerVerification:
                 "-f", file,
                 "-m"
             ]) != 0:
-                return 1
-        return 0
+                failed_tags.append(tag['tag'])
+        if len(failed_tags) == 0:
+            return 0
+        else:
+            click.echo(click.style(f"Failed to publish image:{failed_tags}", fg="red"))
+            return 1
 
 
 def init_parser():
