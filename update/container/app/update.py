@@ -442,8 +442,8 @@ class ContainerVerification:
         if len(failed_tags) == 0:
             return 0
         else:
-            click.echo(click.style(f"Failed to publish image:{failed_tags}"))
-        return 1
+            click.echo(click.style(f"Failed to publish image:{failed_tags}", fg="red"))
+            return 1
 
 
 def init_parser():
