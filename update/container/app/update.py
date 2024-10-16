@@ -9,6 +9,7 @@ import os
 import re
 import yaml
 
+from packaging.version import Version
 from prettytable import PrettyTable
 
 
@@ -99,7 +100,7 @@ def _parse_meta_yml(file: str):
         'latest': "False"
     }
     arch = ""
-    newest = ""
+    tags = []
     contents = file.split("/")
     if len(contents) != DOCKERFILE_PATH_DEPTH:
         raise Exception(
@@ -112,7 +113,6 @@ def _parse_meta_yml(file: str):
         with open(meta, "r") as f:
             tags = yaml.safe_load(f)
         try:
-            newest = max(tags.keys())
             if not isinstance(tags, dict):
                 raise Exception(f"Format error: {meta}")
             for key in tags:
@@ -131,7 +131,7 @@ def _parse_meta_yml(file: str):
         tag['tag'] = re.sub(r'\D', '.', contents[1]) + \
               "-oe" + _transform_version_format(contents[2])
     # check if the tag is the latest
-    if tag['tag'] >= newest:
+    if Version(tag['tag'].split('-')[0]) >= max([Version(s.split('-')[0]) for s in tags]):
         tag['latest'] = "True"
 
     return contents[0], tag, arch
