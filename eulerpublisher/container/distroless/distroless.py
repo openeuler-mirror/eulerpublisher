@@ -20,6 +20,7 @@ class DistrolessPublisher(pb.Publisher):
     ):
         self.repo = repo
         self.name = name
+        self.arch = arch
         self.version = version
         self.registry = registry
         self.packages = packages
@@ -27,8 +28,13 @@ class DistrolessPublisher(pb.Publisher):
         self.platform = common.init_platform(arch)
         self.dockerfile = common.init_dockerfile(dockerfile, DOCKERFILE_PATH)
         self.workdir = common.init_workdir(self.dockerfile)
+        oe_version = common.transform_version_format(os_version=version)
+        if self.arch:
+            image_tag = f"{name}-{self.arch}-{oe_version}"
+        else:
+            image_tag = f"{name}-{oe_version}"
         tag = {
-            'tag': f"{name}-{common.transform_version_format(os_version=version)}",
+            'tag': image_tag,
             'latest': False
         }
         self.tags_build, self.tags_push = common.init_tags(
@@ -40,32 +46,15 @@ class DistrolessPublisher(pb.Publisher):
             "PACKAGES": ",".join(self.packages),
             "VERSION": self.version
         }
-        return common.build(
-            op,
-            self.workdir,
-            self.dockerfile,
-            self.platform,
-            self.tags_build,
-            build_args
-        )
+        return common.build(op, self, build_args)
 
     def push(self):
-        return common.push(
-            self.registry, self.tags_push, self.multi_file
-        )
+        return common.push(self)
     
     # this function is only used for publishing multi-platform image
     def build_and_push(self):
-        try:
-            # login registry
-            if (
-                pb.login_registry(registry=self.registry, multi=self.multi_file)
-                != pb.PUBLISH_SUCCESS
-            ):
-                return pb.PUBLISH_FAILED
-            if self.build(op="push") != pb.PUBLISH_SUCCESS:
-                return pb.PUBLISH_FAILED
-        except (OSError, subprocess.CalledProcessError) as err:
-            click.echo(click.style(f"[Push] {err}", fg="red"))
-        click.echo("[Push] finished")
-        return pb.PUBLISH_SUCCESS
+        build_args = {
+            "PACKAGES": ",".join(self.packages),
+            "VERSION": self.version
+        }
+        return common.build_and_push(self, build_args)

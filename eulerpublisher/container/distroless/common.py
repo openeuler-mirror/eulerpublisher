@@ -21,8 +21,7 @@ def transform_version_format(os_version: str):
         os_version = os_version.replace("lts", "")
     # delete all "." and "-"
     ret = os_version.replace(".", "").replace("-", "")
-
-    return ret
+    return f"oe{ret}"
 
 def init_dockerfile(param_dockerfile, default_dockerfile):
     # get Dockerfile path
@@ -79,14 +78,14 @@ def init_workdir(dockerfile):
         return os.path.dirname(dockerfile)
     return os.path.abspath(os.environ["EP_APP_WORKDIR"])
 
-def build(op="load", workdir="", dockerfile="", platform="", tags_build="", build_args={}):
+def build(op="load", param={}, build_args={}):
     arg_str = " ".join([
         f"--build-arg {key}={value}" for key, value in build_args.items()
     ])
     command = "docker buildx build --platform {} {} {} --{} .".format(
-        platform, tags_build, arg_str, op
+        param.platform, param.tags_build, arg_str, op
     )
-    return build_command(command, workdir, dockerfile)
+    return build_command(command, param.workdir, param.dockerfile)
 
 def build_command(command, workdir="", dockerfile=""):
     try:
@@ -113,18 +112,35 @@ def build_command(command, workdir="", dockerfile=""):
     click.echo("[Build] finished")
     return pb.PUBLISH_SUCCESS
 
-def push(registry, tags_push, multi_file):
+def push(param={}):
     try:
         # login registry
         if (
-            pb.login_registry(registry=registry, multi=multi_file)
+            pb.login_registry(registry=param.registry, multi=param.multi_file)
             != pb.PUBLISH_SUCCESS
         ):
             return pb.PUBLISH_FAILED
         # push
-        for tag in tags_push:
+        for tag in param.tags_push:
             if subprocess.call("docker push " + tag, shell=True) != 0:
                 return pb.PUBLISH_FAILED
+    except (OSError, subprocess.CalledProcessError) as err:
+        click.echo(click.style(f"[Push] {err}", fg="red"))
+    click.echo("[Push] finished")
+    return pb.PUBLISH_SUCCESS
+
+def build_and_push(param={}, build_args={}):
+    try:
+        # login registry
+        if (
+            pb.login_registry(registry=param.registry, multi=param.multi_file)
+            != pb.PUBLISH_SUCCESS
+        ):
+            return pb.PUBLISH_FAILED
+        if build(
+            op="push", param=param, build_args=build_args
+        ) != pb.PUBLISH_SUCCESS:
+            return pb.PUBLISH_FAILED
     except (OSError, subprocess.CalledProcessError) as err:
         click.echo(click.style(f"[Push] {err}", fg="red"))
     click.echo("[Push] finished")

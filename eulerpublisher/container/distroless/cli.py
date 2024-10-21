@@ -37,7 +37,7 @@ def group():
 @click.option(
     "-a",
     "--arch",
-    required=True,
+    required=False,
     help="The architecture of required distroless image."
 )
 @click.option(
@@ -87,7 +87,7 @@ def build(repo, registry, arch, dockerfile, name, version, mpublish, packages):
         name=name,
         version=version.lower(),
         packages=packages,
-        multi=mpublish,
+        multi=mpublish
     )
     ret = obj.build()
     if ret != pb.PUBLISH_SUCCESS:
@@ -116,6 +116,12 @@ def build(repo, registry, arch, dockerfile, name, version, mpublish, packages):
     " is set, `--registry` is no longer needed.",
 )
 @click.option(
+    "-a",
+    "--arch",
+    required=False,
+    help="The architecture of required distroless image."
+)
+@click.option(
     "-n",
     "--name",
     required=True,
@@ -139,7 +145,7 @@ def build(repo, registry, arch, dockerfile, name, version, mpublish, packages):
     "config/container/app/registry.yaml. In this situation, the option "
     "`--registry` are no longer needed.",
 )
-def push(repo, registry, name, version, mpublish):
+def push(repo, registry, arch, name, version, mpublish):
     if mpublish:
         click.echo("`-g, --registry` option will not be used "
             "while `-m, --mpublish` is set.")
@@ -147,6 +153,7 @@ def push(repo, registry, name, version, mpublish):
         repo=repo,
         registry=registry,
         name=name,
+        arch=arch,
         version=version.lower(),
         multi=mpublish
     )
@@ -227,7 +234,7 @@ def publish(arch, repo, registry, dockerfile, name, version, mpublish, packages)
         dockerfile=dockerfile,
         name=name,
         version=version.lower(),
-        multi=mpublish,
+        multi=mpublish
     )
     if (not arch):
         if obj.build_and_push() != pb.PUBLISH_SUCCESS:

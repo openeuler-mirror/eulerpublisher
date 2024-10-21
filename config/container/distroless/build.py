@@ -184,8 +184,10 @@ if __name__ == "__main__":
     download_rpms(eulerrepo, packages)
     # Install necessary RPM packages
     install_rpms(args.buildroot, packages)
-    # Add nonroot user and group
+    # Add nonroot user group
     create_user_group(args.buildroot)
+    # Create user directory and grant permissions
+    create_user_home(args.buildroot)
     # Create os-release file
     create_os_release(args.buildroot, args.version.upper(), args.arch)
     # Cleanup buildroot
