@@ -131,7 +131,9 @@ def _parse_meta_yml(file: str):
         tag['tag'] = re.sub(r'\D', '.', contents[1]) + \
               "-oe" + _transform_version_format(contents[2])
     # check if the tag is the latest
-    if Version(tag['tag'].split('-')[0]) >= max([Version(s.split('-')[0]) for s in tags]):
+    if tags == []:
+        tag['latest'] = "True"
+    elif Version(tag['tag'].split('-')[0]) >= max([Version(s.split('-')[0]) for s in tags]):
         tag['latest'] = "True"
 
     return contents[0], tag, arch
