@@ -140,6 +140,15 @@ eulerpublisher container app check --name {APP_NAME} --script {SCRIPT.sh} --tag 
 
 By default `tests/container/app/{APP_NAME}_test.sh` , the test cases of the application container image are saved in , and users can adjust `--script` the test cases according to their own needs.
 
+#### Distroless container images
+
+The openEuler Distroless container image is designed to install a specified list of application software, fulfilling the software requirements for programs to run in specific scenarios. It avoids installing unnecessary software and files, such as package managers like yum, command-line tools like bash, and other tools that are not related to program execution.
+
+Here’s how you can publish a Distroless container image. In this command, the list of software to be installed is provided at the end, separated by spaces.
+```
+eulerpublisher container distroless publish -a aarch64 -p openeuler/distroless -f Dockerfile -n base -version 22.03-LTS glibc filesystem ...
+```
+
 #### Test the framework
 
 EulerPublisher uses the shunit2 test framework.
