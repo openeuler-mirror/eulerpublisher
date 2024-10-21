@@ -1,0 +1,132 @@
+CHANGES
+=======
+
+* fix: modify directory structure
+* fix: modify install.sh
+* fix: modify install.sh and uninstall.sh
+* fix: modify install.sh and uninstall.sh
+* 删除文件 .eggs
+* fix: change 2-space indent to 4-space
+* fix: modify README.md
+* fix: add empty file utils/.gitkeep
+* doc: modify README.md
+* fix: modify resource/cloudimg/script/gen\_install.sh and resource/cloudimg/script/aws\_install.sh
+* fix: modify resource/config/gen\_install.sh and resource/config/aws\_install.sh
+* refactor: merge the build and push process for AWS and GEN cloud image
+* docs: add tips to README.md and README.en.md
+* feat: add scripts for automatic installation and uninstallation
+* fix: modify config/cloudimg/script/aws\_install.sh
+* docs: modify README.md and README.en.md
+* fix: modify config/cloudimg/script/aws\_install.sh
+* !64 build: update openeuler version list
+* build: update openeuler version list
+* !63 slim二次整合
+* four slim functions add
+* !62 push: update gitee param for image push
+* push: update gitee param for image push
+* 删除编译文件
+* !60 code-check: check content formats with image-info.yml
+* code-check: check content formats with  image-info.yml
+* !58 check\_updates: revert mock code
+* check\_updates: revert mock code
+* !57 requirements: modify project dependencies file
+* requirements: modify project dependencies file
+* !56 code-check: add the ci process for check the file path and content
+* code-check: add the ci process for check the file path and content
+* !55 fix: add default latest config for image tag
+* fix: add default latest config for image tag
+* !54 bugfix: update latest image tag
+* bugfix: update latest image tag
+* !53 debug: add parse meta yaml logs
+* debug: add parse meta yaml logs
+* !52 更新README，增强自动化发布能力
+* Change code for CI
+* !51 golang: update test script bugfix
+* golang: update test script bugfix
+* !50 golang: update golang test srcipt
+* golang: update golang test script
+* golang: update golang test srcipt
+* !48 golang: 挂载容器测试文件
+* !43 【轻量级 PR】：add tests/container/app/squid\_test.sh
+* !44 【轻量级 PR】：add tests/container/app/bwa\_test.sh
+* golang: volumn test file
+* !47 golang: modify test script for more version
+* golang：update golang test script
+* golang： modify the test script of golang
+* golang: modify test script for more version
+* go: modify go test script
+* !46 调整meta.yml格式以适应不同构建需求
+* Change code to adapt CI
+* !45 更新update.py匹配CI工程
+* update update/container/app/update.py
+* add tests/container/app/bwa\_test.sh. 添加bwa\_test.sh测试脚本
+* add tests/container/app/squid\_test.sh. 添加squid\_test.sh.测试脚本
+* !40 pushrm: add 755 permission for pushrm
+* pushrm: add 755 permission for pushrm
+* !39 builld: rollback for docker container build script
+* builld: rollback for docker container build script
+* !38 pushrm: add pushrm script for auto publish image readme
+* pushrm: add pushrm script for auto publish image readme
+* pushrm: add pushrm script for auto publish image readme
+* pushrm: add pushrm script for auto publish image readme
+* pushrm: add pushrm script for auto publish image readme
+* !31 修改云镜像构建脚本，增强代码鲁棒性
+* Change cloudimg operations and fix some bugs
+* !35 mlflow: revert and mock test script
+* mlflow: revert commit
+* Revert "mlflow: mlflow test script has some problems, temporary delete this script !!!"
+* !32 mlflow: 测试脚本有问题，临时删除一下
+* mlflow: mlflow test script has some problems, temporary delete this script !!!
+* !28 添加了telegraf，mimir，bind9的测试用例
+* !19 add mlflow\_test.sh
+* update loki\_test.sh
+* add tests/container/app/tomcat\_test.sh
+* mofified
+* update tests/container/app/mlflow\_test.sh. remove comments
+* !27 添加openjdk的测试用例
+* !22 添加对 kafka, zookeeper, grafana 的测试
+* add tests for kafka,grafana,zookeeper
+* modify
+* add openjdk test
+* !26 Add "close()" for  file operations
+* Need close the file
+* !23 添加了go的测试用例
+* update tests/container/app/mlflow\_test.sh. 更新了mlflow的Dockerfile后，对mlflow\_test.sh进行了修改。 1. 换了新的test\_mlflow\_server函数，因为新的Dockerfile中已经包含了mlflow server的启动，所以测试脚本中不再需要“手动”启动server，只需要通过curl判断server的运行状态即可。 2. 删掉了test\_default\_experiment函数，保留test\_create\_experiment函数，因为有时新启动一个mlflow server后default experiment并不存在，但不影响使用，仍然可以创建新的experiment。
+* 添加go的测试用例
+* !16 添加了postgres测试用例
+* A mlflow test script
+* 删去了load\_shunit2的实现
+* add postgres test
+* !15 增加yum update
+* yum update
+* !14 Bug修复
+* Fix bug
+* !13 修正代码-在构建镜像失败时释放builder资源
+* Correct code for deleting buildx builders while failed
+* !12 修正应用容器镜像构建时未返回错误码的问题
+* Correct the return code of application images building
+* !11 修改httpd测试用例
+* modify tests
+* !10 修改镜像发布代码
+* Correct code for updating
+* !8 修改了README.en.md
+* feature: adjust README.en.md
+* !7 添加CI构建脚本
+* update for CI build
+* !5 删除无效测试用例
+* !6 删除未使用的多余引用，提升代码的规范性
+* Modify ut case for ubuntu environment
+* update eulerpublisher/publisher/publisher.py
+* Delete invalid UT case
+* !4 EulerPublisher新增应用容器镜像流程及测试框架
+* Add code for openeuler-docker-images CI
+* Add tests for base images
+* !2 Upload code for building generic cloud images and AMIs
+* delete ena.ko and relatived code
+* !3 Enhancing Robustness Through Exception Handling
+* update eulerpublisher/container/container.py
+* Merge: enhance the code robustness of publishing container and aws image
+* Add code for building AMI image
+* !1 Initialize EulerPublisher code
+* Initialize EulerPublisher code
+* Initial commit

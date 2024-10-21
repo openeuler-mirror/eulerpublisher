@@ -14,14 +14,14 @@ sudo pip uninstall -yr requirements.txt
 sudo yum autoremove -y qemu-img
 
 # 卸载docker
-sudo rm -rf /usr/local/bin/containerd   \
-            /usr/local/bin/ctr          \
-            /usr/local/bin/dockerd      \
-            /usr/local/bin/docker-proxy \
-            /usr/local/bin/docker       \
-            /usr/local/bin/docker-init  \
-            /usr/local/bin/runc         \
-            /usr/local/bin/containerd-shim-runc-v2  
+sudo rm -rf /usr/bin/containerd   \
+            /usr/bin/ctr          \
+            /usr/bin/dockerd      \
+            /usr/bin/docker-proxy \
+            /usr/bin/docker       \
+            /usr/bin/docker-init  \
+            /usr/bin/runc         \
+            /usr/bin/containerd-shim-runc-v2  
 
 # 卸载云厂商命令行工具
 sudo rm -rf /usr/local/bin/coscli  \

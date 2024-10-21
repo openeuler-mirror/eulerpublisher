@@ -12,9 +12,9 @@ from eulerpublisher.publisher import EP_PATH
 from eulerpublisher.publisher import OPENEULER_REPO
 
 CACHE_DATA_PATH = "/tmp/eulerpublisher/container/base/"
-DOCKERFILE_PATH = EP_PATH + "resource/container/base/Dockerfile"
-TAGS = EP_PATH + "resource/container/base/tags.yaml"
-DEFAULT_REGISTRY = EP_PATH + "resource/container/base/registry.yaml"
+DOCKERFILE_PATH = EP_PATH + "config/container/base/Dockerfile"
+TAGS = EP_PATH + "config/container/base/tags.yaml"
+DEFAULT_REGISTRY = EP_PATH + "config/container/base/registry.yaml"
 TESTCASE_PATH = EP_PATH + "tests/container/base/openeuler_test.sh"
 
 
