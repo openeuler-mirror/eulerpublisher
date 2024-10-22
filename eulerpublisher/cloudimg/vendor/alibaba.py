@@ -50,7 +50,8 @@ def push_alibaba(arch, version, bucket, region, image):
             ],
             role_name = 'AliyunECSImageImportDefaultRole',
             platform = 'Others Linux',
-            image_name = "openEuler-" + version + "-" + arch
+            image_name = "openEuler-" + version + "-" + arch,
+            architecture = arch if arch == 'x86_64' else 'arm64'
         )
         runtime = util_models.RuntimeOptions()
         client.import_image_with_options(import_image_request, runtime)
