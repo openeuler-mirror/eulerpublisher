@@ -24,3 +24,12 @@ sudo -E python3 update/container/app/update.py \
     -br ${giteeTargetBranch} \
     -su ${giteeTargetRepoUrl} \
     -op push
+# clear unused resources
+echo "清理缓存..."
+docker image prune -f
+docker container prune -f
+docker network prune -f
+docker volume prune -f
+docker system prune -af
+docker system df
+echo "清理完成!"
