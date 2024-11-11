@@ -152,7 +152,7 @@ def login_registry(registry, multi):
     """
     1. Login all target registries.
     2. Before logging in, all users and their passwords must
-       be set into the environment
+        be set into the environment
     """
     for key in env:
         username = os.environ[str(env[key][0])]

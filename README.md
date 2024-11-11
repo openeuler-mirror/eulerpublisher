@@ -148,72 +148,75 @@ EulerPublisher使用[shUnit2](https://github.com/kward/shunit2)测试框架。�
 
 欢迎广大开发者贡献测试用例！
 
-### 2. 构建cloud images
-#### 通用云镜像构建
-使用EulerPublisher在本地执行机上进行通用云镜像构建，定制的镜像符合大多数主流云厂商镜像发布的要求，可用于发布。
+### 2. 发布云镜像
+使用EulerPublisher在本地执行机上进行云镜像构建，定制的镜像符合大多数主流云厂商镜像发布的要求，可用于发布。
 -  **步骤1** 、基础构建准备
 ```
-eulerpublisher cloudimg gen prepare -v {VERSION} -a {ARCH}
+eulerpublisher cloudimg prepare -v {VERSION} -a {ARCH}
 ```
 此命令中所有参数均需显式指定，`-v`是构建目标镜像的openEuler版本号，`-a`指定构建目标镜像的架构类型，目前仅支持`aarch64`或`x86_64`，
 该步骤实现的功能是从openEuler Repo获取基础镜像，用于下一步定制。
--  **步骤2** 、构建通用镜像
+-  **步骤2** 、构建云镜像
 ```
-eulerpublisher cloudimg gen build -v {VERSION} -a {ARCH} -o {NAME} -p {RPMLIST}
+eulerpublisher cloudimg build -t {TARGET} -v {VERSION} -a {ARCH}
 ```
-此命令中`{NAME}`指定最终构建镜像的名称，`{RPMLIST}`是用户需要预安装的软件包列表文件，一旦指定不能为空。其余参数作用与步骤1命令中参数作用一致。
-```
-# rpmlist内容示例
-tar
-make
-zip
-curl
-...
-```
-执行此命令后，会在执行机`/tmp/eulerpublisher/cloudimg/gen/output/`目录下生成一个命名为`{NAME}`的最终镜像，该镜像满足目前大多数主流公有云厂商云市场镜像发布的技术要求，用户可手动进行镜像发布。
+此命令中`{TARGET}`指定公有云厂商，其余参数作用与步骤1命令中参数作用一致。
+执行此命令后，会在执行机`/tmp/eulerpublisher/cloudimg/gen/output/`目录下生成一个命名为`openEuler-{VERSION}-{ARCH}-{TIME}.qcow2`的目标镜像（例如：`openEuler-22.03-LTS-SP2-x86_64-20230802_010324.qcow2`），该镜像满足目前大多数主流公有云厂商云市场镜像发布的技术要求。
+-  **步骤3** 、上传云镜像
 
-#### AWS云镜像构建
-使用EulerPublisher构建AMI时，需要预先使用`awscli`进行`aws configure`配置，完成身份认证，配置信息如下：
+执行本步之前，需要预先使用公有云厂商提供的命令行工具进行配置，完成身份认证，配置信息如下：
 ```
+# 华为云 OBS存储命令行工具
+$ obsutil config -interactive
+- Please input your ak:
+- <key_id>
+- Please input your sk:
+- <secret_key>
+- Please input your endpoint:
+- <endpoint>
+
+# 阿里云 OSS存储命令行工具
+$ ossutil config
+- Please input your endpoint:
+- <endpoint>
+- Please input your accessKeySecret:
+- <secret_key>
+- Please input your accessKeyID:
+- <key_id>
+
+# 腾讯云 COS存储命令行工具
+$ coscli config init
+- Input Your Secret ID:
+- <key_id><endpoint>
+- Input Your Secret Key: 
+- <secret_key>
+- Input Bucket's Endpoint:
+- <endpoint>
+
+# AWS S3存储命令行工具
 $ aws configure
 - AWS Access Key ID: <key_id>
 - AWS Secret Access Key: <secret_key>
 - Default region name: <region>
 ```
-其中，`key_id`和`secret_key`是一对用于访问认证的密钥对，生成方法参见[AWS管理访问密钥](https://docs.aws.amazon.com/zh_cn/IAM/latest/UserGuide/id_credentials_access-keys.html?icmpid=docs_iam_console#Using_CreateAccessKey)，`region`是执行构建AMI任务的域。
--  **步骤1** 、AMI构建准备
+其中，`key_id`和`secret_key`是一对用于访问认证的密钥对，`endpoint`是存储桶的接入点。有关访问密钥的详细信息，请参考[华为云管理访问密钥](https://support.huaweicloud.com/usermanual-ca/ca_01_0003.html)，[阿里云管理访问密钥](https://help.aliyun.com/zh/ram/user-guide/create-an-accesskey-pair)，[腾讯云管理访问密钥](https://cloud.tencent.com/document/product/598/40488)），[AWS管理访问密钥](https://docs.aws.amazon.com/zh_cn/IAM/latest/UserGuide/id_credentials_access-keys.html?icmpid=docs_iam_console#Using_CreateAccessKey)。
+```
+export HUAWEICLOUD_SDK_AK="key_id"
+export HUAWEICLOUD_SDK_SK="secret_key"
+export ALIBABACLOUD_SDK_AK="key_id"
+export ALIBABACLOUD_SDK_SK="secret_key"
+export TENCENTCLOUD_SDK_AK="key_id"
+export TENCENTCLOUD_SDK_SK="secret_key"
+export AWS_SDK_AK="key_id"
+export AWS_SDK_SK="secret_key"
+```
+完成上述步骤后，可执行如下命令上传云镜像
+```
+eulerpublisher cloudimg push -t {TARGET} -v {VERSION} -a {ARCH} -r {REGION} -b {BUCKET} -f {FILE}
+```
+此命令中`{REGION}`指定地域，`{BUCKET}`指定存储桶，`{FILE}`指定云镜像文件，其余参数作用与步骤2命令中参数作用一致。
+执行此命令后，会将云镜像文件上传至公有云厂商对应地域的存储桶，同时还会在对应地域的镜像列表生成一个命名为`openEuler-{VERSION}-{ARCH}`的最终镜像。
 
-```
-eulerpublisher cloudimg aws prepare -v {VERSION} -a {ARCH} -b {BUCKET}
-```
-此命令中所有参数均需显式指定，`-v`是构建目标AMI的openEuler版本号，`-a`指定构建AMI的架构类型，目前仅支持`aarch64`或`x86_64`，
-`-b`是存储桶名，存储桶用于保存`prepare`上传的原始`raw`镜像，`bucket`在`aws configure`配置的`region`内。
-
-执行此命令后，会在AWS对应`region`的`bucket`中出现一个命名为`openEuler-{VERSION}-{ARCH}.raw`的原始镜像（例如：openEuler-22.03-LTS-SP2-x86_64.raw）。
--  **步骤2** 、构建AMI
-
-```
-eulerpublisher cloudimg aws build -v {VERSION} -a {ARCH} -b {BUCKET} -r {REGION} -p {RPMLIST}
-```
-此命令中除`-p`以外的所有参数均需显式指定，参数作用与`eulerpublisher cloudimg aws prepare`命令一致。EulerPublisher通过[aws_install.sh](config/cloudimg/script/aws_install.sh)实现定制AMI镜像的能力，目前默认的[aws_install.sh](config/cloudimg/script/aws_install.sh)满足构建得到的AMI符合AWS Marketplace AMI发布的要求，需要预安装到镜像中的软件由`--rpmlist`指定的文件{RPMLIST}确定。
-```
-# rpmlist示例
-tar
-make
-zip
-curl
-...
-```
-
-执行此命令后，会在AWS对应`region`的`EC2 AMI`列表中生成一个命名为`openEuler-{VERSION}-{ARCH}-{TIME}-hvm`的最终镜像（例如：`openEuler-22.03-LTS-SP2-x86_64-20230802_010324-hvm`）。
-
--  **发布AMI到AWS Marketplace**
-
-同时，eulerpublisher提供“一键发布”到AWS个人账户的能力，即上述步骤1、2的顺序执行，命令如下：
-```
-eulerpublisher cloudimg aws publish -v {VERSION} -a {ARCH} -b {BUCKET} -r {REGION} -p {RPMLIST}
-```
-生成的AMI满足AWS Marketplace云镜像发布的要求，如有需要可进行镜像产品发布。由于AWS Marketplace存在人工审核环节，无法通过自动化流程一键发布，用户需手动操作申请发布AMI，见[https://aws.amazon.com/marketplace](https://aws.amazon.com/marketplace/partners/management-tour)。
 ### 3. 镜像分析与优化
 #### Dockerfile静态分析
 

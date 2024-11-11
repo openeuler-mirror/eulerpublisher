@@ -1,5 +1,7 @@
-awscli
 boto3
+huaweicloudsdkims
+tencentcloud-sdk-python-cvm
+alibabacloud_ecs20140526
 bs4
 click
 datetime

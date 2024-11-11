@@ -5,3 +5,4 @@ tar
 hostname
 unzip
 make
+vim
