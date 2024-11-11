@@ -126,6 +126,15 @@ eulerpublisher container app check -n {APP_NAME} -s {SCRIPT.sh} -t {APP_TAG}
 ```
 应用容器镜像的测试用例默认保存在`tests/container/app/{APP_NAME}_test.sh`，用户可根据自身需求使用`-s`指定测试用例脚本。
 
+#### Distroless容器镜像
+
+openEuler Distroless容器镜像是安装指定的应用软件列表，满足在特定场景下程序运行的软件集合。不安装无用软件和文件，如包管理器yum、命令行工具bash等一些程序运行无关的工具。
+```
+# distroless容器镜像发布
+eulerpublisher container distroless publish -a aarch64 -p openeuler/distroless -f Dockerfile -n base -version 22.03-LTS glibc filesystem ...
+```
+需要安装的软件列表放在命令结尾处，空格隔开即可。
+
 #### 测试框架
 EulerPublisher使用[shUnit2](https://github.com/kward/shunit2)测试框架。本项目每个应用容器镜像通过一个shell脚本进行测试，默认保存在`tests/container/app/`目录，测试脚本命名为`{APP_NAME}_test.sh`。每个测试脚本的关键内容如下：
 ```
