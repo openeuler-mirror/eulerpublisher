@@ -29,7 +29,7 @@ pip3 install -r ./requirements.txt
 python3 setup.py install
 # publish to hubs
 sudo -E python3 update/container/app/update.py \
-	-pr ${giteePullRequestIid} \
+	-pr ${giteePullRequestId} \
     -sr ${giteeRepoName} \
     -br ${giteeTargetBranch} \
     -su ${giteeTargetRepoUrl} \
