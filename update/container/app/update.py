@@ -341,6 +341,7 @@ class ContainerVerification:
         # build update images by Dockerfiles
         for file in self.change_files:
             if not os.path.exists(file):
+                click.echo(click.style(f"The file: {file} is deleted, no need to check."))
                 continue
             if os.path.basename(file) != "Dockerfile":
                 continue
@@ -422,7 +423,7 @@ class ContainerVerification:
         failed_tags = []
         for file in self.change_files:
             if not os.path.exists(file):
-                # delete files that are not in the repository
+                click.echo(click.style(f"The file: {file} is deleted, no need to publish."))
                 continue
             # update readme while changed file is README.md
             if os.path.basename(file) == "README.md":
