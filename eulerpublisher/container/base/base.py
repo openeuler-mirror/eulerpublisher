@@ -156,7 +156,7 @@ class OePublisher(pb.Publisher):
                 != pb.PUBLISH_SUCCESS
             ):
                 return pb.PUBLISH_FAILED
-            # build mutil-platform images with 'buildx'
+            # build multi-platform images with 'buildx'
             builder = pb.create_builder()
             # build and push docker image
             os.chdir(self.version)
