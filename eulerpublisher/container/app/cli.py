@@ -228,6 +228,11 @@ def check(name, hubnamespace, script, tag):
     "will be tagged with both `tag` and `latest` while True."
 )
 @click.option(
+    "-s",
+    "--source",
+    help="The source image which are copied from and published to other repos again."
+)
+@click.option(
     "-m",
     "--mpublish",
     is_flag=True,
@@ -239,7 +244,7 @@ def check(name, hubnamespace, script, tag):
     "config/container/app/registry.yaml. In this situation, the option "
     "`--registry` is no longer needed.",
 )
-def publish(arch, repo, registry, dockerfile, tag, latest, mpublish):
+def publish(arch, repo, registry, dockerfile, tag, latest, source, mpublish):
     if mpublish:
         click.echo("`-g, --registry` option will not be used "
             "while `-m, --mpublish` is set.")
@@ -251,6 +256,9 @@ def publish(arch, repo, registry, dockerfile, tag, latest, mpublish):
         tag={'tag': tag, 'latest': latest},
         multi=mpublish,
     )
+    # used for publishing openeuler/{app} images without rebuild
+    if source and (obj.copy_and_push(source) == pb.PUBLISH_SUCCESS):
+        sys.exit(0)
     if (not arch):
         if obj.build_and_push() != pb.PUBLISH_SUCCESS:
             sys.exit(1)

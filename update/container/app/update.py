@@ -443,6 +443,7 @@ class ContainerVerification:
                 "-p", f"{OFFICIAL_NAMESPACE}/{name}",
                 "-t", tag['tag'],
                 "-l", tag['latest'],
+                "-s", f"{TEST_NAMESPACE}/{name}:{tag['tag']}", 
                 "-f", file,
                 "-m"
             ]) != 0:
