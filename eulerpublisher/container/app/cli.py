@@ -244,7 +244,7 @@ def check(name, hubnamespace, script, tag):
     "config/container/app/registry.yaml. In this situation, the option "
     "`--registry` is no longer needed.",
 )
-def publish(arch, repo, registry, dockerfile, tag, latest, source, mpublish):
+def publish(arch, repo, registry, dockerfile, tag, latest, mpublish, source):
     if mpublish:
         click.echo("`-g, --registry` option will not be used "
             "while `-m, --mpublish` is set.")
