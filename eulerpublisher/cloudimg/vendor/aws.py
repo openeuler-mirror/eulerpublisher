@@ -39,21 +39,21 @@ def push_aws(arch, version, bucket, region, image):
     sk = os.getenv("AWS_SDK_SK")
 
     # 上传镜像到S3存储
-    # try:
-    #     subprocess.call(
-    #         [
-    #             "aws",
-    #             "s3",
-    #             "cp",
-    #             DATA_PATH + "output/" + image,
-    #             "s3://" + bucket + "/" + image,
-    #         ]
-    #     )
-    # except Exception:
-    #     raise click.ClickException(
-    #         "[Push] (Amazon web services) Failed to upload image to "
-    #         "bucket: %s" % bucket
-    #     )
+    try:
+        subprocess.call(
+            [
+                "aws",
+                "s3",
+                "cp",
+                DATA_PATH + "output/" + image,
+                "s3://" + bucket + "/" + image,
+            ]
+        )
+    except Exception:
+        raise click.ClickException(
+            "[Push] (Amazon web services) Failed to upload image to "
+            "bucket: %s" % bucket
+        )
 
     # 创建EC2和IAM客户端对象
     ec2_client = boto3.client("ec2", aws_access_key_id=ak, aws_secret_access_key=sk)

@@ -3,9 +3,9 @@ import os
 import subprocess
 import click
 
-from alibabacloud_ecs20140526.client import Client as Ecs20140526Client
+from alibabacloud_ecs20140526.client import Client as EcsClient
 from alibabacloud_tea_openapi import models as open_api_models
-from alibabacloud_ecs20140526 import models as ecs_20140526_models
+from alibabacloud_ecs20140526 import models as ecs_models
 from alibabacloud_tea_util import models as util_models
 from alibabacloud_tea_util.client import Client as UtilClient
 
@@ -35,15 +35,15 @@ def push_alibaba(arch, version, bucket, region, image):
         )
 
     # 创建ECS客户端对象
-    client = Ecs20140526Client(config)
+    client = EcsClient(config)
     
     # 发起创建镜像请求
     try:
-        disk_device_mapping_0 = ecs_20140526_models.ImportImageRequestDiskDeviceMapping(
+        disk_device_mapping_0 = ecs_models.ImportImageRequestDiskDeviceMapping(
             ossbucket = bucket,
             ossobject = image
         )
-        import_image_request = ecs_20140526_models.ImportImageRequest(
+        import_image_request = ecs_models.ImportImageRequest(
             region_id = region,
             disk_device_mapping = [
                 disk_device_mapping_0

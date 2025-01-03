@@ -77,7 +77,7 @@ def build(repo, registry, arch, dockerfile, tag, mpublish):
         registry=registry,
         arch=arch,
         dockerfile=dockerfile,
-        tag=tag,
+        tag={'tag': tag, 'latest': False},
         multi=mpublish,
     )
     ret = obj.build()
@@ -128,7 +128,12 @@ def push(repo, registry, tag, mpublish):
     if mpublish:
         click.echo("`-g, --registry` option will not be used "
             "while `-m, --mpublish` is set.")
-    obj = AppPublisher(repo=repo, registry=registry, tag=tag, multi=mpublish)
+    obj = AppPublisher(
+        repo=repo,
+        registry=registry,
+        tag={'tag': tag, 'latest': False},
+        multi=mpublish
+    )
     ret = obj.push()
     if ret != pb.PUBLISH_SUCCESS:
         sys.exit(1)
@@ -220,7 +225,7 @@ def check(name, hubnamespace, script, tag):
     type=bool,
     default=False,
     help="To show whether the tag is latest, and the image "
-    "will be taged with both `tag` and `latest` while True."
+    "will be tagged with both `tag` and `latest` while True."
 )
 @click.option(
     "-m",

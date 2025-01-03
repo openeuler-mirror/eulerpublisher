@@ -31,14 +31,15 @@ if [[ ! -z "${nbd_loaded}" ]]; then
     sudo qemu-nbd -d "${DEV_NUM}"
 fi
 sudo qemu-nbd -c "${DEV_NUM}" "${TMP_DATA_PATH}${OPENEULER_IMG}"
+# resize to 8G
 sudo e2fsck -fy ${DEV_NUM}p2 || true
 sudo resize2fs ${DEV_NUM}p2 6G
 sudo sync
 
-# Add some timeout to avoid device busy error
+# add some timeout to avoid device busy error
 sleep 3
 
-# Reset fdisk error status
+# reset fdisk error status
 sed -e 's/\s*\([\+0-9a-zA-Z]*\).*/\1/' << EOF | sudo fdisk ${DEV_NUM}
   p # print current partition
   d # delete partition
@@ -66,7 +67,7 @@ sleep 3
 
 # makes sure that running yum in the chroot it can get out to download stuff
 sudo cp /etc/resolv.conf $MOUNT_DIR/etc/resolv.conf
-# install cloud-init 
+# install packages
 sudo chroot $MOUNT_DIR yum install -y $(cat ${INSTALL_PACKAGES})
 # clean cache
 sudo chroot $MOUNT_DIR yum clean all
@@ -122,6 +123,6 @@ qemu-img resize ${TMP_DATA_PATH}${OPENEULER_IMG} --shrink 8G
 qemu-img convert -p -f ${INPUT_FORMAT} -O ${OUTPUT_FORMAT} \
     ${TMP_DATA_PATH}${OPENEULER_IMG} ${OUTPUT_DIR}${OUTPUT_IMG_NAME}
 
-# Delete temporary data
+# delete temporary data
 sudo rm -rf ${TMP_DATA_PATH}${OPENEULER_IMG}
 echo "Original image cleaned."
