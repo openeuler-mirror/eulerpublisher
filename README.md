@@ -199,7 +199,7 @@ $ aws configure
 - AWS Secret Access Key: <secret_key>
 - Default region name: <region>
 ```
-其中，`key_id`和`secret_key`是一对用于访问认证的密钥对，`endpoint`是存储桶的接入点。有关访问密钥的详细信息，请参考[华为云管理访问密钥](https://support.huaweicloud.com/usermanual-ca/ca_01_0003.html)，[阿里云管理访问密钥](https://help.aliyun.com/zh/ram/user-guide/create-an-accesskey-pair)，[腾讯云管理访问密钥](https://cloud.tencent.com/document/product/598/40488)），[AWS管理访问密钥](https://docs.aws.amazon.com/zh_cn/IAM/latest/UserGuide/id_credentials_access-keys.html?icmpid=docs_iam_console#Using_CreateAccessKey)。
+其中，`key_id`和`secret_key`是一对用于访问认证的密钥对，`endpoint`是存储桶的接入点。有关访问密钥的详细信息，请参考[华为云管理访问密钥](https://support.huaweicloud.com/usermanual-ca/ca_01_0003.html)，[阿里云管理访问密钥](https://help.aliyun.com/zh/ram/user-guide/create-an-accesskey-pair)，[腾讯云管理访问密钥](https://cloud.tencent.com/document/product/598/40488)，[AWS管理访问密钥](https://docs.aws.amazon.com/zh_cn/IAM/latest/UserGuide/id_credentials_access-keys.html?icmpid=docs_iam_console#Using_CreateAccessKey)。
 ```
 export HUAWEICLOUD_SDK_AK="key_id"
 export HUAWEICLOUD_SDK_SK="secret_key"
