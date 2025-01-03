@@ -6,6 +6,9 @@ bs4
 click
 datetime
 docker-py
+gitpython
+packaging
 prettytable
 pyyaml
+requests
 wget

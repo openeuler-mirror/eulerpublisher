@@ -38,7 +38,7 @@ pip install -r ./requirements.txt
 # 下载shUnit2源码
 curl -fSL -o shunit2.tar.gz https://github.com/kward/shunit2/archive/refs/tags/v2.1.8.tar.gz
 
-# 解压并移动至/usr/re/shunit2目录
+# 解压并移动至/usr/share/shunit2目录
 mkdir -p /usr/share/shunit2
 tar -xvf shunit2.tar.gz -C /usr/share/shunit2 --strip-components=1
 ```
@@ -125,6 +125,15 @@ eulerpublisher container app publish -a aarch64 -p openeuler/cann -f Dockerfile 
 eulerpublisher container app check -n {APP_NAME} -s {SCRIPT.sh} -t {APP_TAG}
 ```
 应用容器镜像的测试用例默认保存在`tests/container/app/{APP_NAME}_test.sh`，用户可根据自身需求使用`-s`指定测试用例脚本。
+
+#### Distroless容器镜像
+
+openEuler Distroless容器镜像是安装指定的应用软件列表，满足在特定场景下程序运行的软件集合。不安装无用软件和文件，如包管理器yum、命令行工具bash等一些程序运行无关的工具。
+```
+# distroless容器镜像发布
+eulerpublisher container distroless publish -a aarch64 -p openeuler/distroless -f Dockerfile -n base -version 22.03-LTS glibc filesystem ...
+```
+需要安装的软件列表放在命令结尾处，空格隔开即可。
 
 #### 测试框架
 EulerPublisher使用[shUnit2](https://github.com/kward/shunit2)测试框架。本项目每个应用容器镜像通过一个shell脚本进行测试，默认保存在`tests/container/app/`目录，测试脚本命名为`{APP_NAME}_test.sh`。每个测试脚本的关键内容如下：
@@ -259,3 +268,42 @@ eulerpublisher container slim -r {REPORTPATH} -i {IMAGEID} -t {repository:tag} -
 ```
 eulerpublisher container slim -r nginx.slim.report.json -i d2c94e258dcb -t nginx.slim:latest -p true
 ```
+
+### 4. 自动构建AI镜像
+本章节主要介绍在上游AI新版本镜像发布后，通过运行构建脚本将新版AI镜像发布到openEuler官方镜像仓库，目前阶段主要面向Ascend相关AI镜像。
+
+- Gitee账号配置
+	```bash
+  export GITEE_API_TOKEN={Gitee-Token}
+	export GITEE_USER_NAME={Gitee-User}
+  export GITEE_USER_EMAIL={Gitee-Email}
+	```
+ - 安装工具依赖
+	```bash
+	dnf -y install git python3-pip
+	```
+- 安装Python依赖
+	```bash
+	pip3 install click requests gitpython
+	```
+- 下载项目
+	```bash
+	git clone https://gitee.com/baigj/eulerpublisher.git
+	```
+- 执行脚本
+	```bash
+	python3 {pwd}/eulerpublisher/update/container/auto/update.py -ov 24.03-lts -an cann -sv 8.0.RC1
+	```
+- 参数说明
+    | 参数 | 是否必选 | 示例 |  描述 |
+    |--|--|--|--|
+    | `-ov` | 是 | 24.03-lts | openEuler版本。 |
+    | `-sv` | 是 | 8.0.RC1 | SKD版本。 |
+    | `-an` | 是 | cann | 应用名称，暂时只支持CANN、MindSpore和PyTorch。 |
+    | `-sn` | 否 | cann | SDK名称，默认是CANN， 暂时只支持CANN。 |
+    | `-fv` | 否 | 1.0.0 | AI框架版本，包含PyTorch和MindSpore相关版本。 |
+    | `-pv` | 否 | 3.10 | Python版本，默认是3.8。 |
+    | `-cv` | 否 | 910b | AI芯片版本，默认是910b。 |
+    | `-ps` | 否 | /tmp/cann.sh | Python安装脚本，CANN镜构建用，默认是最新CANN镜像目录下的脚本。 |
+    | `-cs` | 否 | /tmp/python.sh | CANN安装脚本，CANN镜构建用，默认是最新CANN镜像目录下的脚本。 |
+    | `-dp` | 否 | /tmp/Dockerfile | 升级应用镜像时，可以指定应用镜像Dockerfile，默认是当前镜像最新版本的Dockerfile。 |

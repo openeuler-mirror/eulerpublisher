@@ -1,7 +1,6 @@
 # coding=utf-8
 import argparse
 import click
-import json
 import requests
 import subprocess
 import shutil
@@ -10,25 +9,69 @@ import os
 import re
 import yaml
 
+from packaging.version import Version
 from prettytable import PrettyTable
 
 
-DEFAULT_WORKDIR="/tmp/eulerpublisher/ci/container/"
-REPOSITORY_REQUEST_URL="https://gitee.com/api/v5/repos/openeuler/openeuler-docker-images/pulls/"
-DOCKERFILE_PATH_DEPTH=4
-APPLICATION_IMAGE_INFO_PATH_DEPTH=3
-MAX_REQUEST_COUNT=20
-SUCCESS_CODE=200
-TEST_NAMESPACE="openeulertest"
-OFFICIAL_NAMESPACE="openeuler"
-README_PATH_FORMAT="{0}/README.md"
-META_PATH_FORMAT="{0}/meta.yml"
-LOGO_PATH_FORMAT="{0}/doc/picture/{1}"
-IMAGE_INFO_PATH_FORMAT="{0}/doc/image-info.yml"
-PATH_CHECK_TABLE_HEADER=["Image Name", "File Path", "Path Check Result"]
-IMAGE_INFO_CHECK_TABLE_HEADER=["Image Name", "Image-info Item", "Format Check Result"]
-IMAGE_EXTENSIONS = ['.jpeg', '.jpg', '.png', '.gif', '.bmp', '.tiff', '.tif', '.webp', '.svg', '.heif', '.heic']
-IMAGE_INFO_ATTR_KEY = ["name", "category", "description", "environment:|", "tags:|", "download:|", "usage:|", "license", "similar_packages", "dependency"]
+DEFAULT_WORKDIR = "/tmp/eulerpublisher/ci/container/"
+REPOSITORY_REQUEST_URL = (
+    "https://gitee.com/api/v5/repos/openeuler/openeuler-docker-images/pulls/"
+)
+DOCKERFILE_PATH_DEPTH = 4
+MAX_REQUEST_COUNT = 20
+SUCCESS_CODE = 200
+TEST_NAMESPACE = "openeulertest"
+OFFICIAL_NAMESPACE = "openeuler"
+IMAGE_DOC_FILES = ["logo", "image-info"]
+CHECK_PATH_HEADER = [
+    "Image Name",
+    "File Path",
+    "Path Check Result"
+]
+IMAGE_SPECIFICATION_HEADER = [
+    "Image Name",
+    "Check Item",
+    "Check Result"
+]
+IMAGE_INFO_HEADER = [
+    "Image Name",
+    "Image-info Item",
+    "Format Check Result"
+]
+IMAGE_INFO_ATTR = [
+    "name",
+    "category",
+    "description",
+    "license",
+    "similar_packages",
+    "dependency",
+    "environment: |",
+    "tags: |",
+    "download: |",
+    "usage: |",
+]
+IMAGE_EXTENSIONS = [
+    ".jpeg",
+    ".jpg",
+    ".png",
+    ".gif",
+    ".bmp",
+    ".tiff",
+    ".tif",
+    ".webp",
+    ".svg",
+    ".heif",
+    ".heic",
+]
+FILE_PATH_FORMAT = {
+    "README": "{0}/README.md",
+    "picture": "{0}/doc/picture",
+    "logo": "{0}/doc/picture/{1}",
+    "meta": "{0}/meta.yml",
+    "doc": "{0}/doc",
+    "image-info": "{0}/doc/image-info.yml",
+}
+
 
 def _request(url: str):
     cnt = 0
@@ -57,7 +100,7 @@ def _parse_meta_yml(file: str):
         'latest': "False"
     }
     arch = ""
-    newest = ""
+    tags = []
     contents = file.split("/")
     if len(contents) != DOCKERFILE_PATH_DEPTH:
         raise Exception(
@@ -70,7 +113,6 @@ def _parse_meta_yml(file: str):
         with open(meta, "r") as f:
             tags = yaml.safe_load(f)
         try:
-            newest = max(tags.keys())
             if not isinstance(tags, dict):
                 raise Exception(f"Format error: {meta}")
             for key in tags:
@@ -89,7 +131,9 @@ def _parse_meta_yml(file: str):
         tag['tag'] = re.sub(r'\D', '.', contents[1]) + \
               "-oe" + _transform_version_format(contents[2])
     # check if the tag is the latest
-    if tag['tag'] >= newest:
+    if tags == []:
+        tag['latest'] = "True"
+    elif Version(tag['tag'].split('-')[0]) >= max([Version(s.split('-')[0]) for s in tags]):
         tag['latest'] = "True"
 
     return contents[0], tag, arch
@@ -105,77 +149,136 @@ def _push_readme(file: str, namespace: str, repo: str):
         )
     except subprocess.CalledProcessError as err:
         click.echo(click.style(f"{err}", fg="red"))
-    
 
-def _check_file_path(self):
-    total_check_result = 0
-    table = PrettyTable()
-    table.field_names = PATH_CHECK_TABLE_HEADER
-    for file in self.change_files:
-        contents = file.split("/")
-        if len(contents) < 2:
-            continue
-        elif file.endswith("README.md") :
-            check_path = README_PATH_FORMAT.format(contents[0])
-        elif file.endswith("meta.yml"):
-            check_path = META_PATH_FORMAT.format(contents[0])
-        elif file.endswith("image-info.yml"):
-            check_path = IMAGE_INFO_PATH_FORMAT.format(contents[0])
-        elif contents[len(contents) - 1].split(".")[0] == "logo":
-            for extension in IMAGE_EXTENSIONS:
-                picture = contents[len(contents) - 1].split(".")[0] + extension
-                check_path = LOGO_PATH_FORMAT.format(contents[0], picture)
-                if os.path.exists(check_path):
-                    break
-                else:
-                    check_path = LOGO_PATH_FORMAT.format(contents[0], "logo.png")
-        else:
-            continue
-        if os.path.exists(check_path):
-            table.add_row([contents[0], file, click.style("pass", fg="green")])
-        else:
-            total_check_result = 1
-            table.add_row([contents[0], file, click.style("unpass", fg="red")])
+def _check_document(self):
+    result, table = 0, PrettyTable(field_names=IMAGE_SPECIFICATION_HEADER)
+    images = list(filter(
+        _filter_doc_images,
+        list(map(lambda file: file.split("/")[0], self.change_files))
+    ))
+    for image in set(images):
+        if _check_doc_files(image, table):
+            result = 1
     print(table)
-    return total_check_result
+    return result
 
-def _check_image_content(self):
-    total_check_result = 0
-    table = PrettyTable()
-    table.field_names = IMAGE_INFO_CHECK_TABLE_HEADER
+def _filter_doc_images(image):
+    doc_path = FILE_PATH_FORMAT["doc"].format(image)
+    if not os.path.exists(doc_path):
+        return False
+    info_path = FILE_PATH_FORMAT["image-info"].format(image)
+    if not os.path.exists(info_path):
+        return True
+    with open(info_path, "r") as f:
+        image_info = yaml.safe_load(f)
+    if not "show-on-appstore" in image_info:
+        return True
+    return image_info["show-on-appstore"]
+
+def _check_doc_files(image, table):
+    # check the image-info.yml file
+    image_path = FILE_PATH_FORMAT["image-info"].format(image)
+    info_exists = os.path.exists(image_path)
+    table.add_row(
+        [
+            image,
+            image_path,
+            click.style(
+                "pass" if info_exists else "The image information file does not exist!",
+                fg="green" if info_exists else "red",
+            ),
+        ]
+    )
+    # check the application logo
+    logo_list, logo_exists, logo_path = [], False, FILE_PATH_FORMAT["picture"].format(image)
+    if os.path.exists(logo_path):
+        logo_list = os.listdir(logo_path)
+    for key in IMAGE_EXTENSIONS:
+        for picture in logo_list:
+            if not picture.endswith(key):
+                logo_exists = True
+                break
+    table.add_row(
+        [
+            image,
+            f"{image}/doc/picture/*",
+            click.style(
+                "pass" if logo_exists else "The application logo does not exist!",
+                "green" if logo_exists else "red"
+            ),
+        ]
+    )
+    return 0 if logo_exists and info_exists else 1
+
+
+# Check if the required files exist, contains these files in the FILE_PATH_FORMAT
+def _check_file_path(self):
+    result, table = 0, PrettyTable(field_names=CHECK_PATH_HEADER)
     for file in self.change_files:
-        if os.path.basename(file) != "image-info.yml":
-            continue
-        if len(file.split("/")) != APPLICATION_IMAGE_INFO_PATH_DEPTH:
-            continue
         contents = file.split("/")
-        with open(file, "r") as f:
-            # check yml format
-            yaml.safe_load(f)
-            # read image-info.yml line by line
-            f.seek(0)
-            lines = f.readlines()
-            new_lines = []
-            for line in lines:
-                line = line.replace(" ", "")
-                if ":|" in line:
-                    new_lines.append(line.rstrip())
-                else:
-                    new_lines.append(line.split(":")[0])
+        if len(contents) == 1:
+            continue
+        name = contents[len(contents) - 1].split(".")[0]
+        if not name in FILE_PATH_FORMAT:
+            continue
+        file_path = FILE_PATH_FORMAT[name].format(
+            contents[0], contents[len(contents) - 1]
+        )
+        path_error = os.path.exists(contents[0]) and not os.path.exists(file_path)
+        if path_error:
+            result = 1
+        table.add_row(
+            [
+                contents[0],
+                file,
+                click.style(
+                    "failed" if path_error else "pass",
+                    fg="red" if path_error else "green",
+                ),
+            ]
+        )
+    print(table)
+    return result
+
+# Check that the format of each attribute in the image-info.yml is correct
+def _check_image_content(self):
+    result, table = 0, PrettyTable(field_names=IMAGE_INFO_HEADER)
+    image_files = filter(
+        lambda f: f.split("/")[2] == "image-info.yml",
+        filter(lambda f: len(f.split("/")) == 3, self.change_files),
+    )
+    for file in image_files:
         try:
-            for key in IMAGE_INFO_ATTR_KEY:
-                if key in new_lines:
-                    result = click.style("pass", fg="green")
-                else:
-                    total_check_result = 1
-                    result = click.style("unpass", fg="red")
-                table.add_row([contents[0], key.replace(":", "").replace("|", ""), result])
+            with open(file, "r") as f:
+                yaml.safe_load(f)
+                f.seek(0)
+                lines = f.readlines()
+            if not _check_key_exist(table, lines, file.split("/")[0]):
+                continue
+            result = 1
         except yaml.YAMLError as e:
-            raise click.echo(click.style(
-                f"Error in YAML file : {file} : {e}", fg="red"
-            ))
-    print(table)            
-    return total_check_result
+            raise click.echo(
+                click.style(f"Error in YAML file : {file} : {e}", fg="red")
+            )
+    print(table)
+    return result
+
+# Check if the required attributes exist, contains these attributes in the IMAGE_INFO_ATTR
+def _check_key_exist(table, lines, image):
+    result, attr_names = 0, list(
+        map(
+            lambda line: line if line.endswith(": |") else line.split(":")[0],
+            list(map(lambda line: line.rstrip(), lines)),
+        )
+    )
+    for key in IMAGE_INFO_ATTR:
+        if not key in attr_names:
+            result = 1
+        msg = "pass" if key in attr_names else "failed"
+        color = "green" if key in attr_names else "red"
+        table.add_row([image, re.sub(r"[ :|]", "", key), click.style(msg, fg=color)])
+    return result
+
 
 class ContainerVerification:
     '''
@@ -237,6 +340,9 @@ class ContainerVerification:
         os.chdir(self.workdir)
         # build update images by Dockerfiles
         for file in self.change_files:
+            if not os.path.exists(file):
+                click.echo(click.style(f"The file: {file} is deleted, no need to check."))
+                continue
             if os.path.basename(file) != "Dockerfile":
                 continue
             # build and push multi-platform image to `openeulertest`
@@ -267,28 +373,58 @@ class ContainerVerification:
         return 0
     
     def check_code(self):
+        check_result = 0
         os.chdir(self.workdir)
-        # Check the file list in the image directory 
-        path_check_result =_check_file_path(self)
+        # Check the file list in the image directory
+        path_check_result = _check_file_path(self)
         if path_check_result:
-            click.echo(click.style(f"There are some wrong file paths in this PR. The file path check results of the related images are as above.", fg="red"))
-            return 1
+            click.echo(click.style(
+                "There are some wrong file paths in this PR. The file path check results of the related images are as above.",
+                fg="red",
+            ))
+            check_result = 1
         else:
-            click.echo(click.style(f"The file paths check in this PR has passed.", fg="green"))
-            
-        
-        # Check the content format for image-info.yml 
-        content_check_result =_check_image_content(self)
+            click.echo(click.style(
+                "The file paths check in this PR has passed.",
+                fg="green"
+            ))
+
+        # Check the content format for image-info.yml
+        content_check_result = _check_image_content(self)
         if content_check_result:
-            click.echo(click.style(f"There are some format errors in `image-info.yml`, please check as above.", fg="red"))
-            return 1
+            click.echo(click.style(
+                "There are some format errors in `image-info.yml`, please check as above.",
+                fg="red",
+            ))
+            check_result = 1
         else:
-            click.echo(click.style(f"The image-info.yml file content format check has passed.", fg="green"))
-        return 0
-    
+            click.echo(click.style(
+                "The image-info.yml file content format check has passed.",
+                fg="green",
+            ))
+
+        # Check image specifications for releasing on appstore
+        document_check_result = _check_document(self)
+        if document_check_result:
+            click.echo(click.style(
+                "There are some specification errors for releasing on appstore in this PR, please check as above.",
+                fg="red",
+            ))
+            check_result = 1
+        else:
+            click.echo(click.style(
+                "The image specification check for releasing on appstore has passed.",
+                fg="green",
+            ))
+        return check_result
+
     def publish_updates(self):
         os.chdir(self.workdir)
+        failed_tags = []
         for file in self.change_files:
+            if not os.path.exists(file):
+                click.echo(click.style(f"The file: {file} is deleted, no need to publish."))
+                continue
             # update readme while changed file is README.md
             if os.path.basename(file) == "README.md":
                 name = file.split("/")[0]
@@ -307,11 +443,16 @@ class ContainerVerification:
                 "-p", f"{OFFICIAL_NAMESPACE}/{name}",
                 "-t", tag['tag'],
                 "-l", tag['latest'],
+                "-s", f"{TEST_NAMESPACE}/{name}:{tag['tag']}", 
                 "-f", file,
                 "-m"
             ]) != 0:
-                return 1
-        return 0
+                failed_tags.append(tag['tag'])
+        if len(failed_tags) == 0:
+            return 0
+        else:
+            click.echo(click.style(f"Failed to publish image:{failed_tags}", fg="red"))
+            return 1
 
 
 def init_parser():

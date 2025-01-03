@@ -10,7 +10,7 @@ from eulerpublisher.container.base.base import OePublisher
 
 
 
-#静态分析Dockerflie
+#静态分析Dockerfile
 @click.command(
     name="lint",
     help=" Inspect container instructions in Dockerfile."

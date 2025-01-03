@@ -2,13 +2,14 @@
 import click
 import os
 import re
+import requests
 import shutil
 import subprocess
 import yaml
 
 
 import eulerpublisher.publisher.publisher as pb
-from eulerpublisher.publisher import EP_PATH
+from eulerpublisher.publisher import EP_PATH, OPENEULER_DOCKERFILE
 from eulerpublisher.publisher import OPENEULER_REPO
 
 CACHE_DATA_PATH = "/tmp/eulerpublisher/container/base/"
@@ -50,6 +51,16 @@ def _get_latest_version():
                 return item
     return ""
 
+def _get_dockerfile():
+    response = requests.get(OPENEULER_DOCKERFILE)
+    if response.status_code == 200:
+        with open(DOCKERFILE_PATH, "w") as f:
+            f.write(response.text)
+    else:
+        raise Exception(
+            "Failed to download the Dockerfile."
+        )
+    return DOCKERFILE_PATH
 
 # Class for publishing openEuler container images
 class OePublisher(pb.Publisher):
@@ -64,7 +75,7 @@ class OePublisher(pb.Publisher):
         if dockerfile:
             self.dockerfile = os.path.abspath(dockerfile)
         else:
-            self.dockerfile = DOCKERFILE_PATH
+            self.dockerfile = _get_dockerfile()
 
         # get multiple-registry yaml path
         if multi:
@@ -156,7 +167,7 @@ class OePublisher(pb.Publisher):
                 != pb.PUBLISH_SUCCESS
             ):
                 return pb.PUBLISH_FAILED
-            # build mutil-platform images with 'buildx'
+            # build multi-platform images with 'buildx'
             builder = pb.create_builder()
             # build and push docker image
             os.chdir(self.version)

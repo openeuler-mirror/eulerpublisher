@@ -172,3 +172,19 @@ class AppPublisher(pb.Publisher):
             click.echo(click.style(f"[Check] {err}", fg="red"))
         click.echo("[Check] All tests are finished.")
         return pb.PUBLISH_SUCCESS
+    
+    def copy_and_push(self, source: str):
+        if not source:
+            return pb.PUBLISH_FAILED
+        try:
+            if subprocess.call(
+                "docker buildx imagetools create " + \
+                self.tags_build + " " + \
+                source, 
+                shell=True
+            ) != 0:
+                return pb.PUBLISH_FAILED
+        except (OSError, subprocess.CalledProcessError) as err:
+            click.echo(click.style(f"[Push] {err}", fg="red"))
+        click.echo("[Copy_and_Push] finished")       
+        return pb.PUBLISH_SUCCESS

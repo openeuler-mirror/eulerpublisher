@@ -140,6 +140,15 @@ eulerpublisher container app check --name {APP_NAME} --script {SCRIPT.sh} --tag 
 
 By default `tests/container/app/{APP_NAME}_test.sh` , the test cases of the application container image are saved in , and users can adjust `--script` the test cases according to their own needs.
 
+#### Distroless container images
+
+The openEuler Distroless container image is designed to install a specified list of application software, fulfilling the software requirements for programs to run in specific scenarios. It avoids installing unnecessary software and files, such as package managers like yum, command-line tools like bash, and other tools that are not related to program execution.
+
+Here’s how you can publish a Distroless container image. In this command, the list of software to be installed is provided at the end, separated by spaces.
+```
+eulerpublisher container distroless publish -a aarch64 -p openeuler/distroless -f Dockerfile -n base -version 22.03-LTS glibc filesystem ...
+```
+
 #### Test the framework
 
 EulerPublisher uses the shunit2 test framework.
@@ -228,3 +237,42 @@ eulerpublisher cloudimg aws publish --version {VERSION} --arch {ARCH} --bucket {
 ```
 
 The generated AMI meets the requirements of AWS Marketplace cloud image  publishing, and can be released if necessary. Due to the manual review  process in AWS Marketplace, it cannot be published with one click  through the automated process, and users need to manually apply for the  release of the AMI, see https://aws.amazon.com/marketplace.
+
+### 3. Build cloud images
+This chapter mainly introduces how to publish the new version of AI image to the openEuler official image repository by running the build script after the new version of the upstream AI image is released. At this stage, it mainly focuses on Ascend-AI images.
+
+- Gitee Account Configuration
+	```bash
+  export GITEE_API_TOKEN={Gitee-Token}
+	export GITEE_USER_NAME={Gitee-User}
+  export GITEE_USER_EMAIL={Gitee-Email}
+	```
+ - Install Tool Dependencies
+	```bash
+	dnf -y install git python3-pip
+	```
+- Install Python Dependencies
+	```bash
+	pip3 install click requests gitpython
+	```
+- Download the Project
+	```bash
+	git clone https://gitee.com/baigj/eulerpublisher.git
+	```
+- Execute the Script
+	```bash
+	python3 {pwd}/eulerpublisher/update/container/auto/update.py -ov 24.03-lts -an cann -sv 8.0.RC1
+	```
+- Parameter Description
+    | Parameter | Required | Example |  Description |
+    |--|--|--|--|
+    | `-ov` | Yes | 24.03-lts | openEuler version. |
+    | `-sv` | Yes | 8.0.RC1 | SDK version. |
+    | `-an` | Yes | cann | Application name, currently only supports CANN, MindSpore, and PyTorch. |
+    | `-sn` | No | cann | SDK name, default is CANN, currently supports only CANN. |
+    | `-fv` | No | 1.0.0 | AI framework version, including PyTorch and MindSpore-related versions. |
+    | `-pv` | No | 3.10 | Python version, default is 3.8. |
+    | `-cv` | No | 910b | AI chip version, default is 910b. |
+    | `-ps` | No | /tmp/cann.sh | Python installation script, used for building CANN images, with the default being the script in the latest CANN image directory. |
+    | `-cs` | No | /tmp/python.sh | CCANN installation script, used for building CANN images, with the default being the script in the latest CANN image directory. |
+    | `-dp` | No | /tmp/Dockerfile | When updating application images, you can specify the application image Dockerfile, with the default being the Dockerfile of the latest version of the current image. |

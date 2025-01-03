@@ -14,7 +14,7 @@ PUBLISH_FAILED = 1
 PUBLISH_SUCCESS = 0
 ARCHS = ["x86_64", "aarch64"]
 
-# max time(sencond) to start docker
+# max time(second) to start docker
 START_TIMEOUT = 300
 # times to retry download
 RETRY_DOWNLOAD = 10
