@@ -46,7 +46,76 @@ tar -xvf shunit2.tar.gz -C /usr/share/shunit2 --strip-components=1
 
 ## 使用说明
 
-### 1. 发布容器镜像
+### 1. 发布云镜像
+使用EulerPublisher在本地执行机上进行云镜像构建，定制的镜像符合大多数主流云厂商镜像发布的要求，可用于发布。
+-  **步骤1** 、基础构建准备
+```
+eulerpublisher cloudimg prepare -v {VERSION} -a {ARCH}
+```
+此命令中所有参数均需显式指定，`-v`是构建目标镜像的openEuler版本号，`-a`指定构建目标镜像的架构类型，目前仅支持`aarch64`或`x86_64`，
+该步骤实现的功能是从openEuler Repo获取基础镜像，用于下一步定制。
+-  **步骤2** 、构建云镜像
+```
+eulerpublisher cloudimg build -t {TARGET} -v {VERSION} -a {ARCH}
+```
+此命令中`{TARGET}`指定公有云厂商，其余参数作用与步骤1命令中参数作用一致。
+执行此命令后，会在执行机`/tmp/eulerpublisher/cloudimg/gen/output/`目录下生成一个命名为`openEuler-{VERSION}-{ARCH}-{TIME}.qcow2`的目标镜像（例如：`openEuler-22.03-LTS-SP2-x86_64-20230802_010324.qcow2`），该镜像满足目前大多数主流公有云厂商云市场镜像发布的技术要求。
+-  **步骤3** 、上传云镜像
+
+执行本步之前，需要预先使用公有云厂商提供的命令行工具进行配置，完成身份认证，配置信息如下：
+```
+# 华为云 OBS存储命令行工具
+$ obsutil config -interactive
+- Please input your ak:
+- <key_id>
+- Please input your sk:
+- <secret_key>
+- Please input your endpoint:
+- <endpoint>
+
+# 阿里云 OSS存储命令行工具
+$ ossutil config
+- Please input your endpoint:
+- <endpoint>
+- Please input your accessKeySecret:
+- <secret_key>
+- Please input your accessKeyID:
+- <key_id>
+
+# 腾讯云 COS存储命令行工具
+$ coscli config init
+- Input Your Secret ID:
+- <key_id><endpoint>
+- Input Your Secret Key: 
+- <secret_key>
+- Input Bucket's Endpoint:
+- <endpoint>
+
+# AWS S3存储命令行工具
+$ aws configure
+- AWS Access Key ID: <key_id>
+- AWS Secret Access Key: <secret_key>
+- Default region name: <region>
+```
+其中，`key_id`和`secret_key`是一对用于访问认证的密钥对，`endpoint`是存储桶的接入点。有关访问密钥的详细信息，请参考[华为云管理访问密钥](https://support.huaweicloud.com/usermanual-ca/ca_01_0003.html)，[阿里云管理访问密钥](https://help.aliyun.com/zh/ram/user-guide/create-an-accesskey-pair)，[腾讯云管理访问密钥](https://cloud.tencent.com/document/product/598/40488)，[AWS管理访问密钥](https://docs.aws.amazon.com/zh_cn/IAM/latest/UserGuide/id_credentials_access-keys.html?icmpid=docs_iam_console#Using_CreateAccessKey)。
+```
+export HUAWEICLOUD_SDK_AK="key_id"
+export HUAWEICLOUD_SDK_SK="secret_key"
+export ALIBABACLOUD_SDK_AK="key_id"
+export ALIBABACLOUD_SDK_SK="secret_key"
+export TENCENTCLOUD_SDK_AK="key_id"
+export TENCENTCLOUD_SDK_SK="secret_key"
+export AWS_SDK_AK="key_id"
+export AWS_SDK_SK="secret_key"
+```
+完成上述步骤后，可执行如下命令上传云镜像
+```
+eulerpublisher cloudimg push -t {TARGET} -v {VERSION} -a {ARCH} -r {REGION} -b {BUCKET} -f {FILE}
+```
+此命令中`{REGION}`指定地域，`{BUCKET}`指定存储桶，`{FILE}`指定云镜像文件，其余参数作用与步骤2命令中参数作用一致。
+执行此命令后，会将云镜像文件上传至公有云厂商对应地域的存储桶，同时还会在对应地域的镜像列表生成一个命名为`openEuler-{VERSION}-{ARCH}`的最终镜像。
+
+### 2. 发布容器镜像
 
 #### 基础容器镜像
 
