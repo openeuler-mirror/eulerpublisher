@@ -87,6 +87,7 @@ class CloudimgPublisher(pb.Publisher):
             "tencent": "gen_build.sh",
             "alibaba": "gen_build.sh",
             "aws": "aws_build.sh",
+            "azure": "azure_build.sh"
         }
         script = SCRIPT_PATH + build_scripts[self.target]
         args = [qcow2_file, DATA_PATH, CLOUD_INIT_CONFIG, self.rpmlist]

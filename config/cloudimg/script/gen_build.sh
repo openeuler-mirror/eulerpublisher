@@ -50,14 +50,15 @@ sudo chroot $MOUNT_DIR yum clean all
 
 # for security needed by cloud provider
 sudo cp -f ${CLOUD_INIT_CONFIG} ${MOUNT_DIR}/etc/cloud/cloud.cfg.d/
-sudo chroot ${MOUNT_DIR} sed -i "/MACs/d"                                                                    /etc/ssh/sshd_config
-sudo chroot ${MOUNT_DIR} sed -i '$aMACs hmac-sha2-512,hmac-sha2-256'                                         /etc/ssh/sshd_config
-sudo chroot ${MOUNT_DIR} sed -i "/Ciphers/d"                                                                 /etc/ssh/sshd_config
-sudo chroot ${MOUNT_DIR} sed -i '$aCiphers aes256-ctr,aes192-ctr,aes128-ctr'                                 /etc/ssh/sshd_config
-sudo chroot ${MOUNT_DIR} sed -i -E "s/(disable_root: )true/\1false/"                                         /etc/cloud/cloud.cfg
-sudo chroot ${MOUNT_DIR} sed -i -E "s/(ssh_pwauth: )false/\1true/"                                           /etc/cloud/cloud.cfg
-sudo chroot ${MOUNT_DIR} sed -i -E 's/^([[:space:]]*)group.*/\1groups: [sudo, wheel, adm, systemd-journal]/' /etc/cloud/cloud.cfg
-sudo chroot ${MOUNT_DIR} sed -i -E 's/^([[:space:]]*)group.*/&\n\1sudo: ["ALL=(ALL) NOPASSWD:ALL"]/'         /etc/cloud/cloud.cfg
+sudo chroot ${MOUNT_DIR} sed -i "/MACs/d"                                                            /etc/ssh/sshd_config
+sudo chroot ${MOUNT_DIR} sed -i '$aMACs hmac-sha2-512,hmac-sha2-256'                                 /etc/ssh/sshd_config
+sudo chroot ${MOUNT_DIR} sed -i "/Ciphers/d"                                                         /etc/ssh/sshd_config
+sudo chroot ${MOUNT_DIR} sed -i '$aCiphers aes256-ctr,aes192-ctr,aes128-ctr'                         /etc/ssh/sshd_config
+sudo chroot ${MOUNT_DIR} sed -i -E "s/(disable_root: )true/\1false/"                                 /etc/cloud/cloud.cfg
+sudo chroot ${MOUNT_DIR} sed -i -E "s/(ssh_pwauth:\s*)false/\1true/"                                 /etc/cloud/cloud.cfg
+sudo chroot ${MOUNT_DIR} sed -i -E "s/(ssh_pwauth:\s*)0/\11/"                                        /etc/cloud/cloud.cfg
+sudo chroot ${MOUNT_DIR} sed -i -E 's/^(\s*)groups.*/\1groups: [sudo, wheel, adm, systemd-journal]/' /etc/cloud/cloud.cfg
+sudo chroot ${MOUNT_DIR} sed -i -E 's/^(\s*)groups.*/&\n\1sudo: ["ALL=(ALL) NOPASSWD:ALL"]/'         /etc/cloud/cloud.cfg
 
 sudo sync
 sleep 3
