@@ -25,6 +25,7 @@ EULER_VERSIONS = [
     "23.03",
     "23.09",
     "24.03-LTS",
+    "24.03-LTS-SP1",
 ]
 USELESS_DIRS = [
     "usr/share/locale/",

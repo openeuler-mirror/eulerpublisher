@@ -28,6 +28,7 @@ VERSIONS=(
     "22.03-LTS-SP3"
     "22.03-LTS-SP4"
     "24.03-LTS"
+    "24.03-LTS-SP1"
 )
 
 # publish updates
