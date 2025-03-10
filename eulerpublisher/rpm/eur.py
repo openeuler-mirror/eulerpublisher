@@ -40,12 +40,13 @@ def init_client_by_default(config_path: str):
 
 class EurOperation():
     def __init__(self, configfile="") -> None:
-        if configfile:
-            logging.debug(f'Initilizing EUR client from input configfile<{configfile}>')
+        obs_path = os.path.abspath(configfile)
+        if os.path.exists(obs_path):
+            logging.debug(f'Initilizing EUR client from input configfile<{obs_path}>')
             try:
-                self.client = Client.create_from_config_file(configfile)
+                self.client = Client.create_from_config_file(obs_path)
             except Exception as e:
-                logging.error(f'Failed to init client with<{configfile}>: {e}')
+                logging.error(f'Failed to init client with<{obs_path}>: {e}')
             return
         logging.debug("Initilizing EUR client by default configuration")
         self.client = init_client_by_default(DEFAULT_CONFIG_PATH)
