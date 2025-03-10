@@ -1,5 +1,6 @@
 boto3
 huaweicloudsdkims
+copr
 tencentcloud-sdk-python-cvm
 alibabacloud_ecs20140526
 bs4
