@@ -15,7 +15,7 @@ from prettytable import PrettyTable
 
 DEFAULT_WORKDIR = "/tmp/eulerpublisher/ci/container/"
 REPOSITORY_REQUEST_URL = (
-    "https://gitee.com/api/v5/repos/openeuler/openeuler-docker-images/"
+    "https://gitee.com/api/v5/repos/openeuler/openeuler-docker-images/pulls/"
 )
 DOCKERFILE_PATH_DEPTH = 4
 MAX_REQUEST_COUNT = 20
@@ -73,51 +73,13 @@ FILE_PATH_FORMAT = {
 }
 
 
-def _request(url: str, params: dict = None):
+def _request(url: str):
     cnt = 0
     response = None
     while (not response) and (cnt < MAX_REQUEST_COUNT):
-        response = requests.get(url, params)
+        response = requests.get(url=url)
         cnt += 1
-    # check status code
-    if not response or response.status_code != SUCCESS_CODE:
-        raise Exception(
-            f"Failed to get url: {url}, status code: {response.status_code}"
-        )
     return response
-
-
-def _get_latest_commit(prid):
-    """
-    Fetches the list of files for a given pull request (PR).
-
-    Args:
-        prid (str): The ID of the pull request.
-
-    Returns:
-        list: List of files in the latest commit of the PR.
-    """
-    api_token = os.environ.get("GITEE_API_TOKEN")
-    if not api_token:
-        raise Exception("GITEE_API_TOKEN is not set!")
-    params = {"access_token": api_token}
-
-    # Fetch all commits of the current pull request
-    commits_url = f"{REPOSITORY_REQUEST_URL}/pulls/{prid}/commits"
-    commits_resp = _request(commits_url, params=params)
-    if not commits_resp.json()[0]["sha"]:
-        raise Exception(f"No commits found, PR ID: {prid}!")
-
-    # Fetch the files changed in the latest commit
-    files_url = f"{REPOSITORY_REQUEST_URL}/commits/" + \
-                commits_resp.json()[0]['sha']
-    files_resp = _request(files_url, params=params)
-    if not files_resp.json()["files"]:
-        raise Exception(
-            f"No commit files found, "
-            f"commit sha: {commits_resp.json()[0]['sha']}!"
-        )
-    return files_resp.json()["files"]
 
 # transform openEuler version into specifical format
 # e.g., 22.03-lts-sp3 -> oe2203sp3
@@ -343,9 +305,20 @@ class ContainerVerification:
             shutil.rmtree(self.workdir)
 
     def get_change_files(self):
-        change_files = _get_latest_commit(prid=self.prid)
-        for file in change_files:
-            self.change_files.append(file['filename'])
+        url = REPOSITORY_REQUEST_URL + f"{self.prid}/files?access_token=" + \
+            os.environ["GITEE_API_TOKEN"]
+        response = _request(url=url)
+        # check status code
+        if response.status_code == SUCCESS_CODE:
+            files = response.json()
+            for file in files:
+                self.change_files.append(file['filename'])
+        else:
+            click.echo(click.style(
+                f"Failed to fetch files: {response.status_code}", 
+                fg="red"
+            ))
+            return 1
         return 0
         
     def pull_source_code(self):
