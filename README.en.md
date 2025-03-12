@@ -276,3 +276,65 @@ This chapter mainly introduces how to publish the new version of AI image to the
     | `-ps` | No | /tmp/cann.sh | Python installation script, used for building CANN images, with the default being the script in the latest CANN image directory. |
     | `-cs` | No | /tmp/python.sh | CCANN installation script, used for building CANN images, with the default being the script in the latest CANN image directory. |
     | `-dp` | No | /tmp/Dockerfile | When updating application images, you can specify the application image Dockerfile, with the default being the Dockerfile of the latest version of the current image. |
+
+
+### 4. Build RPM with EUR
+The openEuler community infrastructure provides the [EUR (openEuler User Repo)](https://eur.openeuler.openatom.cn/) as a personal package hosting platform for developers, aimed at providing an easy-to-use package distribution platform. EulerPublisher achieves the ability to automatically build RPMs by calling the EUR API.
+
+#### Initialize the EUR API Client
+EulerPublisher specifies three methods for providing the tokens related to initialization in the configuration file [init.yaml](config/rpm/init.yaml) (To obtain EUR API tokens, please visit: https://eur.openeuler.openatom.cn/api):
+
+1. Directly provide a cfg.ini file with the following format:
+```
+[copr-cli]
+copr_url = https://copr.fedorainfracloud.org
+username = coprusername
+login = secretlogin
+token = secrettoken
+```
+After filling in the contents of cfg.ini according to your actual situation, modify the `config-file`'s path in init.yaml to the absolute path of cfg.ini.
+
+2. Pass the above `cfg.ini`'s path as a command parameter `-f` or `--configfile` when executing tasks with EulerPublisher to initialize the EUR client.
+
+3. Provide client initialization parameters through environment variables. 
+
+Users can indirectly provide the corresponding parameters by setting the environment variables `EUR_LOGIN`, `EUR_OWNER`, and `EUR_TOKEN` in [init.yaml](config/rpm/init.yaml) (these can be changed to custom environment variables):
+```
+copr-cli:
+  login: EUR_LOGIN      # Change to the actual environment variable for login
+  username: EUR_OWNER   # Change to the actual environment variable for username
+  token: EUR_TOKEN      # Change to the actual environment variable for token
+```
+
+#### Create a Project
+```
+eulerpublisher rpm prepare [OPTIONS]
+```
+Create a project under a specific EUR user and complete the preparation work before RPM building. The parameter OPTIONS is described as follows:
+
+- `-o/--owner`(required): EUR username
+- `p/--project`(required): Name of the project to be created
+- `f/--configfile`(optional): Specify the client initialization configuration file
+- `c/--chroots`(optional): Specify EUR chroots, such as a single `openeuler-24.03_LTS_SP1-aarch64`, or multiple `openeuler-24.03_LTS_SP1-x86_64,openeuler-24.03_LTS_SP1-aarch64`. Separate multiple entries with commas, with no spaces (default: `openeuler-24.03_LTS_SP1-x86_64,openeuler-24.03_LTS_SP1-aarch64`)
+- `d/--desc`(optional): Description information for the project
+
+#### Create RPM Build
+```
+eulerpublisher rpm build [OPTIONS]
+```
+Create an RPM build task under the EUR project. The parameter OPTIONS is described as follows:
+
+- `-o/--owner`(required): EUR username
+- `-p/--project`(required): Project to which the build task belongs
+- `-f/--configfile`(optional): Configuration file used for initializing the EUR API client
+- `-u/--url`(required): URL of the RPM source repository to be built
+- `-b/--branch`(optional): Branch of the RPM source repository to be built (default is the master or main branch)
+
+#### Query Build Results
+```
+eulerpublisher rpm query [OPTIONS]
+```
+Query the status of RPM build tasks for a specific EUR user. The parameter OPTIONS is described as follows:
+
+- `-o/--owner`(required): EUR username
+- `-l/--buildlist`(required): IDs of EUR build tasks, which can be a single ID (e.g., 101010) or multiple IDs (e.g., 101010,101011). When querying multiple IDs, separate them directly with commas, with no spaces.

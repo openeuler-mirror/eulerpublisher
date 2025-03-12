@@ -1,0 +1,10 @@
+# 获取EUR API的token请访问：https://eur.openeuler.openatom.cn/api
+
+# 优先使用config file初始化client
+config-file: /etc/eulerpublisher/cfg.ini
+
+# config file不存在时，通过环境变量获取初始化参数
+copr-cli:
+  login: EUR_LOGIN      # 修改为login的真实环境变量
+  username: EUR_OWNER   # 修改为username的真实环境变量
+  token: EUR_TOKEN      # 修改为token的真实环境变量

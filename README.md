@@ -269,41 +269,61 @@ eulerpublisher container slim -r {REPORTPATH} -i {IMAGEID} -t {repository:tag} -
 eulerpublisher container slim -r nginx.slim.report.json -i d2c94e258dcb -t nginx.slim:latest -p true
 ```
 
-### 4. 自动构建AI镜像
-本章节主要介绍在上游AI新版本镜像发布后，通过运行构建脚本将新版AI镜像发布到openEuler官方镜像仓库，目前阶段主要面向Ascend相关AI镜像。
+### 4. 使用EUR构建RPM软件包
+openEuler社区基础设施提供的[EUR(openEuler User Repo)](https://eur.openeuler.openatom.cn/)针对开发者推出的个人软件包托管平台，目的在于为开发者提供一个易用的软件包分发平台。
+EulerPublisher通过调用EUR API，实现自动构建RPM的能力。
 
-- Gitee账号配置
-	```bash
-  export GITEE_API_TOKEN={Gitee-Token}
-	export GITEE_USER_NAME={Gitee-User}
-  export GITEE_USER_EMAIL={Gitee-Email}
-	```
- - 安装工具依赖
-	```bash
-	dnf -y install git python3-pip
-	```
-- 安装Python依赖
-	```bash
-	pip3 install click requests gitpython
-	```
-- 下载项目
-	```bash
-	git clone https://gitee.com/baigj/eulerpublisher.git
-	```
-- 执行脚本
-	```bash
-	python3 {pwd}/eulerpublisher/update/container/auto/update.py -ov 24.03-lts -an cann -sv 8.0.RC1
-	```
-- 参数说明
-    | 参数 | 是否必选 | 示例 |  描述 |
-    |--|--|--|--|
-    | `-ov` | 是 | 24.03-lts | openEuler版本。 |
-    | `-sv` | 是 | 8.0.RC1 | SKD版本。 |
-    | `-an` | 是 | cann | 应用名称，暂时只支持CANN、MindSpore和PyTorch。 |
-    | `-sn` | 否 | cann | SDK名称，默认是CANN， 暂时只支持CANN。 |
-    | `-fv` | 否 | 1.0.0 | AI框架版本，包含PyTorch和MindSpore相关版本。 |
-    | `-pv` | 否 | 3.10 | Python版本，默认是3.8。 |
-    | `-cv` | 否 | 910b | AI芯片版本，默认是910b。 |
-    | `-ps` | 否 | /tmp/cann.sh | Python安装脚本，CANN镜构建用，默认是最新CANN镜像目录下的脚本。 |
-    | `-cs` | 否 | /tmp/python.sh | CANN安装脚本，CANN镜构建用，默认是最新CANN镜像目录下的脚本。 |
-    | `-dp` | 否 | /tmp/Dockerfile | 升级应用镜像时，可以指定应用镜像Dockerfile，默认是当前镜像最新版本的Dockerfile。 |
+#### 初始化EUR API Client
+EulerPublisher通过配置文件[init.yaml](config/rpm/init.yaml)指定3种初始化时相关token（获取EUR API的相关token等信息请访问：https://eur.openeuler.openatom.cn/api）的提供方式：
+
+1. 直接提供cfg.ini文件，格式如下
+```
+[copr-cli]
+copr_url = https://copr.fedorainfracloud.org
+username = coprusername
+login = secretlogin
+token = secrettoken
+```
+按实际情况填充cfg.ini的内容后，修改[init.yaml](config/rpm/init.yaml)中`config-file`的路径为cfg.ini的绝对路径。
+
+2. 通过EulerPublisher执行任务时的命令参数`-f`或`--configfile`传入上述cfg.ini来初始化EUR client。
+
+3. 通过环境变量提供client初始化参数
+
+用户可以通过提供[init.yaml](config/rpm/init.yaml)中环境变量`EUR_LOGIN`, `EUR_OWNER`, `EUR_TOKEN`间接提供对应的参数（可修改为自定义的环境变量）
+```
+copr-cli:
+  login: EUR_LOGIN      # 修改为login的真实环境变量
+  username: EUR_OWNER   # 修改为username的真实环境变量
+  token: EUR_TOKEN      # 修改为token的真实环境变量
+```
+
+#### 创建项目
+```
+eulerpublisher rpm prepare [OPTIONS]
+```
+在EUR的特定用户下创建project，完成RPM构建前的准备工作, 参数`OPTIONS`说明如下：
+- `-o/--owner`(必填): EUR用户名 
+- `-p/--project`(必填): 要创建的project名称 
+- `-f/--configfile`(可选): 指定client初始化配置文件 
+- `-c/--chroots`(可选): 用于指定EUR的chroots, 如指定单个`openeuler-24.03_LTS_SP1-aarch64`，或者多个`openeuler-24.03_LTS_SP1-x86_64,openeuler-24.03_LTS_SP1-aarch64`，多项信息使用逗号连接，无空格 (默认`openeuler-24.03_LTS_SP1-x86_64,openeuler-24.03_LTS_SP1-aarch64`)
+- `-d/--desc`(可选): project的描述信息
+
+#### 启动构建
+```
+eulerpublisher rpm build [OPTIONS]
+```
+在EUR的project下创建RPM构建任务，参数`OPTIONS`说明如下：
+- `-o/--owner`(必填): EUR用户名 
+- `-p/--project`(必填): 创建构建任务所属的project 
+- `-f/--configfile`(可选): EUR API client初始化使用的配置文件 
+- `-u/--url`(必填): 需要构建的RPM源码仓链接 
+- `-b/--branch`(可选): 需要构建的RPM源码仓分支 (默认master或main分支)
+
+#### 查询构建
+```
+eulerpublisher rpm query [OPTIONS]
+```
+查询EUR特定用户的RPM构建任务状态，参数`OPTIONS`说明如下：
+- `-o/--owner`(必填): EUR用户名 
+- `-l/--buildlist`(必填): EUR构建任务的ID，可输入单个ID（如`101010`），或多个ID（如`101010,101011`）。查询多个ID时，ID直接用逗号隔开，无空格
