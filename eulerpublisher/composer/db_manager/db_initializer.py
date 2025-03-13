@@ -1,9 +1,11 @@
 import logging
 import sqlite3
 
+from eulerpublisher.utils.constants import DB_NAME
+
 class DBInitializer:
-    def __init__(self, db_name='image_matrix.db'):
-        self.db_name = db_name
+    def __init__(self, db_name=DB_NAME):
+        self.db_name = 'image_matrix.db'
         self.create_database_and_tables()
  
     def get_db_connection(self):

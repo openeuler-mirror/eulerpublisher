@@ -1,10 +1,12 @@
 import logging
 import sqlite3
 
-class DBHandler:
-    def __init__(self, db_name='image_matrix.db'):
-        self.db_name = db_name
+from eulerpublisher.utils.constants import DB_NAME
 
+class DBHandler:
+    def __init__(self):
+        self.db_name = DB_NAME
+        
     def get_db_connection(self):
         return sqlite3.connect(self.db_name)
 
@@ -52,3 +54,20 @@ class DBHandler:
         except sqlite3.Error as e:
             logging.error(f"Failed to fetch software names: {e}")
             raise
+        
+    def get_versions_by_software_name(self, software_name):
+        try:
+            with self.get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT id FROM software_data WHERE software_name = ?', (software_name,))
+                software_id_result = cursor.fetchone()
+                if not software_id_result:
+                    raise ValueError(f"Software '{software_name}' does not exist in the database.")
+                software_id = software_id_result[0]
+                cursor.execute('SELECT version FROM version_data WHERE software_id = ?', (software_id,))
+                results = cursor.fetchall()
+            return [result[0] for result in results]
+        except sqlite3.Error as e:
+            logging.error(f"Failed to fetch versions for software {software_name}: {e}")
+            raise
+        
