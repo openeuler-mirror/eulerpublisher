@@ -64,7 +64,7 @@ IMAGE_EXTENSIONS = [
     ".heif",
     ".heic",
 ]
-
+# {0} indicates the image path prefix.
 FILE_PATH_FORMAT = {
     "README": "{0}/README.md",
     "picture": "{0}/doc/picture",
@@ -176,29 +176,29 @@ def parse_image_directory(file: str):
         return image_dir
     # Validate that each image path ends with it's corresponding name
     images = image_list.get("images", [])
-    for key, value in images:
+    for key, value in images.items():
         if value.endswith(key):
             continue
         raise ValueError(f"Image path does not end with {key}.")
 
-    # Other files do not need to be checked, return none.
+    # Other files do not need to be checked, return empty.
     file_type = os.path.basename(file).split(".")[0]
-    if file_type not in IMAGE_EXTENSIONS:
-        return None
+    if file_type not in FILE_PATH_FORMAT:
+        return ""
 
     # Check if the file path matches any of the image paths in the YAML file
-    for value in images.values():
-        if not file.startswith(value["path"]):
+    for key, value in images.items():
+        if not file.startswith(value):
             continue
         # Extract the suffix path (relative to the image path)
-        prefix_path = value["path"].rstrip("/") + "/"
+        prefix_path = value.rstrip("/") + "/"
         suffix_path = file.replace(prefix_path, "")
         suffix_len = len(suffix_path.split("/"))
         format_path = FILE_PATH_FORMAT[file_type]
         format_len = len(format_path.split("/"))
-        if suffix_len != format_len:
+        if suffix_len != format_len - 1:
             continue
-        return value["path"].rstrip("/")
+        return value.rstrip("/")
     return image_dir
 
 
