@@ -25,7 +25,7 @@ class DBHandler:
         try:
             self.execute_query('INSERT INTO software_data (software_name) VALUES (?)', (software_name,))
         except sqlite3.Error as e:
-            logging.error(f"Failed to add software '{software_name}': {e}")
+            logging.error(f"Failed to add software {software_name}: {e}")
             raise
 
     def add_version(self, software_name, version):
@@ -35,11 +35,12 @@ class DBHandler:
                 cursor.execute('SELECT id FROM software_data WHERE software_name = ?', (software_name,))
                 result = cursor.fetchone()
                 if not result:
-                    raise ValueError(f"Software '{software_name}' does not exist in the database.")
+                    raise ValueError(f"Software {software_name} does not exist in the database.")
                 software_id = result[0]
-                self.execute_query('INSERT INTO version_data (software_id, version) VALUES (?, ?)', (software_id, version))
+                self.execute_query('INSERT INTO version_data (software_id, version) VALUES (?, ?)', 
+                                   (software_id, version))
         except sqlite3.Error as e:
-            logging.error(f"Failed to add version '{version}' for software '{software_name}': {e}")
+            logging.error(f"Failed to add version {version} for software {software_name}: {e}")
             raise
         
     def get_all_software_names(self):
@@ -60,7 +61,7 @@ class DBHandler:
                 cursor.execute('SELECT id FROM software_data WHERE software_name = ?', (software_name,))
                 software_id_result = cursor.fetchone()
                 if not software_id_result:
-                    raise ValueError(f"Software '{software_name}' does not exist in the database.")
+                    raise ValueError(f"Software {software_name} does not exist in the database.")
                 software_id = software_id_result[0]
                 cursor.execute('SELECT version FROM version_data WHERE software_id = ?', (software_id,))
                 results = cursor.fetchall()
