@@ -4,11 +4,9 @@ import sqlite3
 from eulerpublisher.utils.constants import DB_NAME
 
 class DBHandler:
-    def __init__(self):
-        self.db_name = DB_NAME
         
     def get_db_connection(self):
-        return sqlite3.connect(self.db_name)
+        return sqlite3.connect(DB_NAME)
 
     def execute_query(self, query, params=None):
         try:

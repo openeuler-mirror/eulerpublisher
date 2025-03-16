@@ -5,11 +5,7 @@ from .version_combinator import VersionCombinator
 from eulerpublisher.composer.db_manager.db_handler import DBHandler
 from eulerpublisher.utils.constants import BASE_URL
 
-
 class APIMonitor:
-    def __init__(self):
-        self.db_handler = DBHandler()
-        self.version_combinator = VersionCombinator
 
     def fetch_software_data(self, project_name):
         url = f"{BASE_URL}?name={project_name}"
@@ -26,10 +22,10 @@ class APIMonitor:
             return None
 
     def schedule_task(self):
-        software_names = self.db_handler.get_all_software_names()
+        software_names = DBHandler.get_all_software_names()
         # euler，python，cann，mindspore，pytorch
         for software_name in software_names:
-            old_versions = self.db_handler.get_versions_by_software_name(software_name)
+            old_versions = DBHandler.get_versions_by_software_name(software_name)
             cur_versions = self.fetch_software_data(software_name)
             if cur_versions:
                 logging.info(f"Data for project fetched successfully.")
@@ -37,4 +33,4 @@ class APIMonitor:
             if not old_versions:
                 latest_two_versions = cur_versions
                 for version in latest_two_versions:
-                    self.version_combinator.combine_version(software_name, version)
+                    VersionCombinator.combine_version(software_name, version)
