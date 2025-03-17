@@ -97,4 +97,24 @@ class DBHandler:
         except sqlite3.Error as e:
             logging.error(f"Failed to fetch versions for software {software_name}: {e}")
             raise
+        
+    def get_release_url_by_software_id_and_version(self, software_id, version):
+        try:
+            with self.get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT id FROM version_data WHERE software_id = ? AND version = ?', 
+                               (software_id, version))
+                version_id_result = cursor.fetchone()
+                if not version_id_result:
+                        raise ValueError(f"No id found for software_id={software_id} and version={version}")
+                cursor.execute('SELECT release_url FROM dependency_data WHERE software_id = ? AND version_id = ?', 
+                               (software_id, version_id_result[0]))
+                release_result = cursor.fetchone()
+                if not release_result:
+                    raise ValueError(f"No release_url found for software_id={software_id} and version_id={version_id}")
+                return release_result[0]
+        except sqlite3.Error as e:
+            logging.error(f"Failed to fetch release_url for software_id={software_id}, version_id={version_id}: {e}")
+            raise
+
 
