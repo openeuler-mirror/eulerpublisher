@@ -72,6 +72,7 @@ FILE_PATH_FORMAT = {
     "meta": "{0}/meta.yml",
     "doc": "{0}/doc",
     "image-info": "{0}/doc/image-info.yml",
+    "Dockerfile": "{0}/{1}/{2}/Dockerfile"
 }
 
 
@@ -371,6 +372,9 @@ def _check_file_path(self):
         contents = file.split("/")
         name = contents[-1].split(".")[0]
         if name not in FILE_PATH_FORMAT:
+            continue
+        # Dockerfile does not need to be checked.
+        if name == "Dockerfile":
             continue
 
         # check file under image directory
