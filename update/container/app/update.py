@@ -1,6 +1,7 @@
 # coding=utf-8
 import argparse
 import click
+import json
 import requests
 import subprocess
 import shutil
@@ -12,17 +13,17 @@ import yaml
 from packaging.version import Version
 from prettytable import PrettyTable
 
-
 DEFAULT_WORKDIR = "/tmp/eulerpublisher/ci/container/"
 REPOSITORY_REQUEST_URL = (
     "https://gitee.com/api/v5/repos/openeuler/openeuler-docker-images/pulls/"
 )
-DOCKERFILE_PATH_DEPTH = 4
+DOCKERFILE_PATH_DEPTH = 3
 MAX_REQUEST_COUNT = 20
 SUCCESS_CODE = 200
 TEST_NAMESPACE = "openeulertest"
 OFFICIAL_NAMESPACE = "openeuler"
 IMAGE_DOC_FILES = ["logo", "image-info"]
+
 CHECK_PATH_HEADER = [
     "Image Name",
     "File Path",
@@ -63,6 +64,7 @@ IMAGE_EXTENSIONS = [
     ".heif",
     ".heic",
 ]
+
 FILE_PATH_FORMAT = {
     "README": "{0}/README.md",
     "picture": "{0}/doc/picture",
@@ -81,6 +83,7 @@ def _request(url: str):
         cnt += 1
     return response
 
+
 # transform openEuler version into specifical format
 # e.g., 22.03-lts-sp3 -> oe2203sp3
 def _transform_version_format(os_version: str):
@@ -93,22 +96,152 @@ def _transform_version_format(os_version: str):
 
     return ret
 
+
+"""
+ # Single image scenario does not require an image-list.yml file. Example directory structure:
+/openeuler-docker-images/
+└── nginx(Application)
+    ├── x.x.x(application version)
+    │   └── xx.xx-xxx(os version)
+    │       └── Dockerfile
+    ├── doc
+    │   ├── image-info.yml
+    │   └── picture
+    │       └── logo.png
+    ├── meta.yml
+    └── README.md
+
+# Scenario/solution image categorization, example directory structure:
+/openeuler-docker-images/
+└── ai(Scenario)
+    ├── image-list.yml
+    ├── opea(solution)
+    │   ├── chatqna(application)
+    │   │   ├── x.x.x(application version)
+    │   │   │   └── xx.xx-xxx(os version)
+    │   │   │       └── Dockerfile
+    │   │   ├── doc
+    │   │   │   ├── image-info.yml
+    │   │   │   └── picture
+    │   │   │       └── logo.png
+    │   │   ├── meta.yml
+    │   │   └── README.md
+    │   └── chatqna-ui
+    │       ├── x.x.x(application version)
+    │       │   └── xx.xx-xxx(os version)
+    │       │       └── Dockerfile
+    │       ├── doc
+    │       │   ├── image-info.yml
+    │       │   └── picture
+    │       │       └── logo.png
+    │       ├── meta.yml
+    │       └── README.md
+    └── pytorch
+        ├── x.x.x(application version)
+        │   └── xx.xx-xxx(os version)
+        │       └── Dockerfile
+        ├── doc
+        │   ├── image-info.yml
+        │   └── picture
+        │       └── logo.png
+        ├── meta.yml
+        └── README.md
+        
+# AI scenario/solution image-list.yml file path:
+/openeuler-docker-images/ai/image-list.yml
+
+# AI scenario/solution image-list.yml configuration example:
+images:
+  chatqna: ai/opea/chatqna
+  chatqna-ai: ai/opea/chatqna-ui
+  pytorch: ai/pytorch
+"""
+def parse_image_directory(file: str):
+    """
+    Parse and return the image directory based on the given file path.
+    """
+    if len(file.split("/")) == 1:
+        return ""
+
+    # Default application directory is the first segment in the file path.
+    image_dir = file.split("/")[0]
+    image_list_yaml = os.path.join(image_dir, "image-list.yml")
+    if not os.path.exists(image_list_yaml):
+        return image_dir
+
+    # Load the image-list.yml file
+    with open(image_list_yaml, "r", encoding="utf-8") as f:
+        image_list = yaml.safe_load(f)
+    if not image_list:
+        return image_dir
+    # Validate that each image path ends with it's corresponding name
+    images = image_list.get("images", [])
+    for key, value in images:
+        if value.endswith(key):
+            continue
+        raise ValueError(f"Image path does not end with {key}.")
+
+    # Other files do not need to be checked, return none.
+    file_type = os.path.basename(file).split(".")[0]
+    if file_type not in IMAGE_EXTENSIONS:
+        return None
+
+    # Check if the file path matches any of the image paths in the YAML file
+    for value in images.values():
+        if not file.startswith(value["path"]):
+            continue
+        # Extract the suffix path (relative to the image path)
+        prefix_path = value["path"].rstrip("/") + "/"
+        suffix_path = file.replace(prefix_path, "")
+        suffix_len = len(suffix_path.split("/"))
+        format_path = FILE_PATH_FORMAT[file_type]
+        format_len = len(format_path.split("/"))
+        if suffix_len != format_len:
+            continue
+        return value["path"].rstrip("/")
+    return image_dir
+
+
+def _parse_info_default(file: str, image_dir: str):
+    """
+    Parse application information from the Dockerfile path.
+
+    `{app-version}/{os-version}/Dockerfile`
+    """
+    if not image_dir.endswith("/"):
+        image_dir = image_dir + "/"
+
+    # Validate the Dockerfile path structure.
+    context_path = file.replace(image_dir, "")
+    if len(context_path.split("/")) != DOCKERFILE_PATH_DEPTH:
+        raise Exception(
+            f"Failed to check file path: {file}, "
+            "the correct Dockerfile path should be "
+            "{image-version}/{os-version}/Dockerfile`"
+        )
+
+    # Extract base OS version, app version, and app name.
+    os_version_path = os.path.dirname(file)
+    os_version = os.path.basename(os_version_path)
+
+    image_version_path = os.path.dirname(os_version_path)
+    image_version = os.path.basename(image_version_path)
+
+    image_path = os.path.dirname(image_version_path)
+    image_name = os.path.basename(image_path)
+    return os_version, image_version, image_name
+
+
 # parse meta.yml and get the tags && building platforms
-def _parse_meta_yml(file: str):
+def _parse_meta_yml(file: str, image_dir: str):
     tag = {
         'tag': "",
         'latest': "False"
     }
     arch = ""
     tags = []
-    contents = file.split("/")
-    if len(contents) != DOCKERFILE_PATH_DEPTH:
-        raise Exception(
-            f"Failed to check file path: {file}, "
-            "the correct Dockerfile path should be "
-            "`{app-name}/{app-version}/{os-version}/Dockerfile`"
-        )
-    meta = contents[0] + "/meta.yml"
+    meta = os.path.join(image_dir, "meta.yml")
+    # meta = image_dir + "/meta.yml"
     if os.path.exists(meta):
         with open(meta, "r") as f:
             tags = yaml.safe_load(f)
@@ -126,62 +259,78 @@ def _parse_meta_yml(file: str):
             raise click.echo(click.style(
                 f"Error in YAML file : {file} : {e}", fg="red"
             ))
+
     # generate the default tag
+    os_version, image_version, image_name = (
+        _parse_info_default(file=file, image_dir=image_dir)
+    )
     if not tag['tag']:
-        tag['tag'] = re.sub(r'\D', '.', contents[1]) + \
-              "-oe" + _transform_version_format(contents[2])
+        tag['tag'] = re.sub(r'\D', '.', image_version) + \
+                     "-oe" + _transform_version_format(os_version)
     # check if the tag is the latest
-    if tags == []:
+    if not tags:
         tag['latest'] = "True"
     elif Version(tag['tag'].split('-')[0]) >= max([Version(s.split('-')[0]) for s in tags]):
         tag['latest'] = "True"
+    return image_name, tag, arch
 
-    return contents[0], tag, arch
 
-def _push_readme(file: str, namespace: str, repo: str):
+def _push_readme(file: str, namespace: str, image: str):
     current = os.path.dirname(os.path.abspath(__file__))
     script = os.path.abspath(os.path.join(current, '../pushrm/pushrm.sh'))
     os.chmod(script, 0o755)
     try:
         subprocess.run(
-            [script, file, namespace, repo],
+            [script, file, namespace, image],
             env={**os.environ, 'APIKEY__QUAY_IO': os.environ["DOCKER_QUAY_APIKEY"]}
         )
     except subprocess.CalledProcessError as err:
         click.echo(click.style(f"{err}", fg="red"))
 
+
 def _check_document(self):
     result, table = 0, PrettyTable(field_names=IMAGE_SPECIFICATION_HEADER)
-    images = list(filter(
+
+    image_dirs = []
+    for change_file in self.change_files:
+        if not os.path.exists(change_file):
+            continue
+        image_dir = parse_image_directory(change_file)
+        image_dirs.append(image_dir)
+
+    image_dirs = list(filter(
         _filter_doc_images,
-        list(map(lambda file: file.split("/")[0], self.change_files))
+        image_dirs
     ))
-    for image in set(images):
-        if _check_doc_files(image, table):
+
+    for image_dir in set(image_dirs):
+        if _check_image_info(image_dir, table):
             result = 1
     print(table)
     return result
 
-def _filter_doc_images(image):
-    doc_path = FILE_PATH_FORMAT["doc"].format(image)
+
+def _filter_doc_images(image_dir: str):
+    doc_path = FILE_PATH_FORMAT["doc"].format(image_dir)
     if not os.path.exists(doc_path):
         return False
-    info_path = FILE_PATH_FORMAT["image-info"].format(image)
+    info_path = FILE_PATH_FORMAT["image-info"].format(image_dir)
     if not os.path.exists(info_path):
         return True
     with open(info_path, "r") as f:
         image_info = yaml.safe_load(f)
-    if not "show-on-appstore" in image_info:
+    if "show-on-appstore" not in image_info:
         return True
     return image_info["show-on-appstore"]
 
-def _check_doc_files(image, table):
+
+def _check_image_info(image_dir, table):
     # check the image-info.yml file
-    image_path = FILE_PATH_FORMAT["image-info"].format(image)
+    image_path = FILE_PATH_FORMAT["image-info"].format(image_dir)
     info_exists = os.path.exists(image_path)
     table.add_row(
         [
-            image,
+            image_dir,
             image_path,
             click.style(
                 "pass" if info_exists else "The image information file does not exist!",
@@ -189,8 +338,9 @@ def _check_doc_files(image, table):
             ),
         ]
     )
-    # check the application logo
-    logo_list, logo_exists, logo_path = [], False, FILE_PATH_FORMAT["picture"].format(image)
+    # check the image logo
+    logo_list, logo_exists = [], False
+    logo_path = FILE_PATH_FORMAT["picture"].format(image_dir)
     if os.path.exists(logo_path):
         logo_list = os.listdir(logo_path)
     for key in IMAGE_EXTENSIONS:
@@ -200,10 +350,10 @@ def _check_doc_files(image, table):
                 break
     table.add_row(
         [
-            image,
-            f"{image}/doc/picture/*",
+            image_dir,
+            f"{image_dir}/doc/picture/*",
             click.style(
-                "pass" if logo_exists else "The application logo does not exist!",
+                "pass" if logo_exists else "The image logo does not exist!",
                 "green" if logo_exists else "red"
             ),
         ]
@@ -215,21 +365,31 @@ def _check_doc_files(image, table):
 def _check_file_path(self):
     result, table = 0, PrettyTable(field_names=CHECK_PATH_HEADER)
     for file in self.change_files:
+        if not os.path.exists(file):
+            continue
+
         contents = file.split("/")
-        if len(contents) == 1:
+        name = contents[-1].split(".")[0]
+        if name not in FILE_PATH_FORMAT:
             continue
-        name = contents[len(contents) - 1].split(".")[0]
-        if not name in FILE_PATH_FORMAT:
+
+        # check file under image directory
+        image_dir = parse_image_directory(file)
+        if not file.startswith(image_dir):
             continue
+
         file_path = FILE_PATH_FORMAT[name].format(
-            contents[0], contents[len(contents) - 1]
+            image_dir, contents[-1]
         )
-        path_error = os.path.exists(contents[0]) and not os.path.exists(file_path)
+        path_error = (
+                os.path.exists(image_dir)
+                and not os.path.exists(file_path)
+        )
         if path_error:
             result = 1
         table.add_row(
             [
-                contents[0],
+                image_dir,
                 file,
                 click.style(
                     "failed" if path_error else "pass",
@@ -240,20 +400,28 @@ def _check_file_path(self):
     print(table)
     return result
 
+
 # Check that the format of each attribute in the image-info.yml is correct
 def _check_image_content(self):
     result, table = 0, PrettyTable(field_names=IMAGE_INFO_HEADER)
     image_files = filter(
-        lambda f: f.split("/")[2] == "image-info.yml",
-        filter(lambda f: len(f.split("/")) == 3, self.change_files),
+        lambda f: f.endswith("image-info.yml"),
+        self.change_files
     )
+
     for file in image_files:
+        if not os.path.exists(file):
+            continue
+        image_dir = parse_image_directory(file)
+        if not file.startswith(image_dir):
+            continue
         try:
             with open(file, "r") as f:
                 yaml.safe_load(f)
                 f.seek(0)
                 lines = f.readlines()
-            if not _check_key_exist(table, lines, file.split("/")[0]):
+            image = image_dir.split("/")[-1]
+            if not _check_key_exist(table, lines, image):
                 continue
             result = 1
         except yaml.YAMLError as e:
@@ -262,6 +430,7 @@ def _check_image_content(self):
             )
     print(table)
     return result
+
 
 # Check if the required attributes exist, contains these attributes in the IMAGE_INFO_ATTR
 def _check_key_exist(table, lines, image):
@@ -272,11 +441,15 @@ def _check_key_exist(table, lines, image):
         )
     )
     for key in IMAGE_INFO_ATTR:
-        if not key in attr_names:
+        if key not in attr_names:
             result = 1
         msg = "pass" if key in attr_names else "failed"
         color = "green" if key in attr_names else "red"
-        table.add_row([image, re.sub(r"[ :|]", "", key), click.style(msg, fg=color)])
+        table.add_row([
+            image,
+            re.sub(r"[ :|]", "", key),
+            click.style(msg, fg=color)
+        ])
     return result
 
 
@@ -285,28 +458,28 @@ class ContainerVerification:
     Check whether the upstream application supports openEuler
     1. Build container image with Dockerfile
     2. Test the container image
-    3. Comment the PR with test result 
+    3. Comment the PR with test result
     '''
 
-    def __init__(self, 
-        prid,
-        operation,
-        source_repo,
-        source_code_url,
-        source_branch,
-    ):
+    def __init__(self,
+                 prid,
+                 operation,
+                 source_repo,
+                 source_code_url,
+                 source_branch,
+                 ):
         self.prid = prid
         self.source_repo = source_repo
         self.source_code_url = source_code_url
         self.source_branch = source_branch
-        self.workdir = DEFAULT_WORKDIR + f"/{operation}/{self.source_repo}"
+        self.workdir = DEFAULT_WORKDIR + f"{operation}/{self.source_repo}"
         self.change_files = []
         if os.path.exists(self.workdir):
             shutil.rmtree(self.workdir)
 
     def get_change_files(self):
         url = REPOSITORY_REQUEST_URL + f"{self.prid}/files?access_token=" + \
-            os.environ["GITEE_API_TOKEN"]
+              os.environ["GITEE_API_TOKEN"]
         response = _request(url=url)
         # check status code
         if response.status_code == SUCCESS_CODE:
@@ -315,12 +488,12 @@ class ContainerVerification:
                 self.change_files.append(file['filename'])
         else:
             click.echo(click.style(
-                f"Failed to fetch files: {response.status_code}", 
+                f"Failed to fetch files: {response.status_code}",
                 fg="red"
             ))
             return 1
         return 0
-        
+
     def pull_source_code(self):
         # create workdir
         if not os.path.exists(DEFAULT_WORKDIR):
@@ -335,7 +508,7 @@ class ContainerVerification:
             return 1
         click.echo(click.style(f"Clone {s_repourl} successfully."))
         return 0
-        
+
     def check_updates(self):
         os.chdir(self.workdir)
         # build update images by Dockerfiles
@@ -346,7 +519,8 @@ class ContainerVerification:
             if os.path.basename(file) != "Dockerfile":
                 continue
             # build and push multi-platform image to `openeulertest`
-            name, tag, arch = _parse_meta_yml(file=file)
+            image_dir = parse_image_directory(file)
+            name, tag, arch = _parse_meta_yml(file=file, image_dir=image_dir)
             if subprocess.call([
                 "eulerpublisher",
                 "container",
@@ -373,13 +547,16 @@ class ContainerVerification:
         return 0
     
     def check_code(self):
-        check_result = 0
         os.chdir(self.workdir)
         # Check the file list in the image directory
         path_check_result = _check_file_path(self)
+
+        # list total check results items
+        check_result = 0
         if path_check_result:
             click.echo(click.style(
-                "There are some wrong file paths in this PR. The file path check results of the related images are as above.",
+                "There are some wrong file paths in this PR."
+                " The file path check results of the related images are as above.",
                 fg="red",
             ))
             check_result = 1
@@ -393,7 +570,8 @@ class ContainerVerification:
         content_check_result = _check_image_content(self)
         if content_check_result:
             click.echo(click.style(
-                "There are some format errors in `image-info.yml`, please check as above.",
+                "There are some format errors in `image-info.yml`, "
+                "please check as above.",
                 fg="red",
             ))
             check_result = 1
@@ -407,13 +585,15 @@ class ContainerVerification:
         document_check_result = _check_document(self)
         if document_check_result:
             click.echo(click.style(
-                "There are some specification errors for releasing on appstore in this PR, please check as above.",
+                "There are some specification errors for "
+                "releasing on appstore in this PR, please check as above.",
                 fg="red",
             ))
             check_result = 1
         else:
             click.echo(click.style(
-                "The image specification check for releasing on appstore has passed.",
+                "The image specification check for "
+                "releasing on appstore has passed.",
                 fg="green",
             ))
         return check_result
@@ -426,14 +606,15 @@ class ContainerVerification:
                 click.echo(click.style(f"The file: {file} is deleted, no need to publish."))
                 continue
             # update readme while changed file is README.md
+            image_dir = parse_image_directory(file)
+            image = image_dir.split("/")[-1]
             if os.path.basename(file) == "README.md":
-                name = file.split("/")[0]
-                _push_readme(file=file, namespace="openeuler", repo=name)
+                _push_readme(file=file, namespace="openeuler", image=image)
                 continue
             if os.path.basename(file) != "Dockerfile":
                 continue
             # build and push multi-platform image to `openeuler`
-            name, tag, arch = _parse_meta_yml(file=file)
+            name, tag, arch = _parse_meta_yml(file=file, image_dir=image_dir)
             if subprocess.call([
                 "eulerpublisher",
                 "container",
@@ -443,7 +624,7 @@ class ContainerVerification:
                 "-p", f"{OFFICIAL_NAMESPACE}/{name}",
                 "-t", tag['tag'],
                 "-l", tag['latest'],
-                "-s", f"{TEST_NAMESPACE}/{name}:{tag['tag']}", 
+                "-s", f"{TEST_NAMESPACE}/{name}:{tag['tag']}",
                 "-f", file,
                 "-m"
             ]) != 0:
@@ -472,7 +653,7 @@ def init_parser():
         "-br", "--source_branch", help="source branch of the PR"
     )
     new_parser.add_argument(
-        "-op", "--operation", choices=['check', 'push'], 
+        "-op", "--operation", choices=['check', 'push'],
         help="specify the operation within `check` and `push`"
     )
     return new_parser
@@ -483,11 +664,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if (
-        not args.prid
-        or not args.source_repo
-        or not args.source_code_url
-        or not args.source_branch
-        or not args.operation
+            not args.prid
+            or not args.source_repo
+            or not args.source_code_url
+            or not args.source_branch
+            or not args.operation
     ):
         parser.print_help()
         sys.exit(1)
@@ -502,8 +683,9 @@ if __name__ == "__main__":
  
     if obj.get_change_files():
         sys.exit(1)
-    click.echo(click.style(f"Difference: {obj.change_files}"))
-
+    click.echo(click.style(
+        f"Difference: {json.dumps(obj.change_files, indent=4)}"
+    ))
     if obj.pull_source_code():
         sys.exit(1)
             
