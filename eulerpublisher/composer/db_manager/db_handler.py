@@ -52,7 +52,7 @@ class DBHandler:
         try:
             with self.get_db_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute('SELECT software_name FROM software_data WHERE software_id = ?', (software_id,))
+                cursor.execute('SELECT software_name FROM software_data WHERE id = ?', (software_id,))
                 software_name_result = cursor.fetchone()
                 if not software_name_result:
                     raise ValueError(f"Software {software_id} does not exist in the database.")

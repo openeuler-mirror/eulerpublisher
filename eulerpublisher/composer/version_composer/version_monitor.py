@@ -1,5 +1,6 @@
 import requests
 import logging
+from itertools import groupby
 
 from eulerpublisher.utils.constants import BASE_URL
 
@@ -19,14 +20,30 @@ class APIMonitor:
         except requests.exceptions.RequestException as e:
             logging.error(f"Failed to fetch data for project {software_name}: {e}")
             return None
-        
+    
+    # 对python进行特殊处理，取大版本中的latest小版本
     def filter_python_versions(self, versions):
-        return [version for version in versions if version.count('.') == 1]
+        
+        def get_major_version(version):
+            return int(version.split('.')[1])
+
+        def get_minor_version(version):
+            return int(version.split('.')[2])
+
+        major_versions = sorted(set(get_major_version(v) for v in versions), reverse=True)[:2]
+        filtered_versions = [v for v in versions if get_major_version(v) in major_versions]
+        result = [
+            max(group, key=get_minor_version)
+            for _, group in groupby(
+                sorted(filtered_versions, key=get_major_version),
+                key=get_major_version
+            )
+        ]
+        return result
     
     def get_api_latest_versions(self, software_name, versions):
         if software_name == "python":
-            filtered_versions = self.filter_python_versions(versions)
-            return filtered_versions[:2]
+            return self.filter_python_versions(versions)
         else:
             return versions[:2]
         
