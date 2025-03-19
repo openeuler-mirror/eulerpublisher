@@ -4,7 +4,7 @@ import sqlite3
 from eulerpublisher.utils.constants import DB_NAME
 
 class DBHandler:
-        
+
     def get_db_connection(self):
         return sqlite3.connect(DB_NAME)
 

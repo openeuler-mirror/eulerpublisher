@@ -5,7 +5,7 @@ from eulerpublisher.utils.constants import DB_NAME
 
 class DBInitializer:
     
-    def __init__(self, db_name=DB_NAME):
+    def __init__(self):
         self.db_name = DB_NAME
         self.create_database_and_tables()
  
@@ -70,3 +70,4 @@ class DBInitializer:
         except sqlite3.Error as e:
             logging.error(f"image_matrix database initial error: {e}")
             raise
+    
