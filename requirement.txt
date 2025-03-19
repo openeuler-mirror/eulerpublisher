@@ -2,3 +2,4 @@ click
 datetime
 docker-py
 wget
+schedule
