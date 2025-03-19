@@ -4,6 +4,9 @@ import sqlite3
 from eulerpublisher.utils.constants import DB_NAME
 
 class DBHandler:
+    """
+    A DataBase Handler class for DataBase image_matrix.db.
+    """
 
     def get_db_connection(self):
         return sqlite3.connect(DB_NAME)

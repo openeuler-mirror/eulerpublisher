@@ -4,6 +4,9 @@ import sqlite3
 from eulerpublisher.utils.constants import DB_NAME
 
 class DBInitializer:
+    """
+    A DataBase Initializing class for DataBase image_matrix.db.
+    """
     
     def __init__(self):
         self.db_name = DB_NAME
@@ -19,7 +22,6 @@ class DBInitializer:
                 
                 cursor.execute('BEGIN TRANSACTION')
                 
-                # 创建software_data表
                 cursor.execute('''
                 CREATE TABLE IF NOT EXISTS software_data (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -27,7 +29,6 @@ class DBInitializer:
                 )
                 ''')
 
-                # 创建version_data表
                 cursor.execute('''
                 CREATE TABLE IF NOT EXISTS version_data (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,7 +39,6 @@ class DBInitializer:
                 )
                 ''')
 
-                # 创建image_data表
                 cursor.execute('''
                 CREATE TABLE IF NOT EXISTS image_data (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,7 +55,6 @@ class DBInitializer:
                 )
                 ''')
 
-                # 创建dependency_data表
                 cursor.execute('''
                 CREATE TABLE IF NOT EXISTS dependency_data (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -5,8 +5,20 @@ from itertools import groupby
 from eulerpublisher.utils.constants import BASE_URL
 
 class APIMonitor:
-
+    """
+    A class for interface call and interface data processing.
+    """
+    
     def fetch_software_data(self, software_name):
+        """
+        Get the current software versions from interface.
+
+        Parameters:
+        software_name (str): software which need to build image.
+
+        Returns:
+        list: version list for software.
+        """
         url = f"{BASE_URL}?name={software_name}"
         try:
             response = requests.get(url).json()
@@ -21,9 +33,16 @@ class APIMonitor:
             logging.error(f"Failed to fetch data for project {software_name}: {e}")
             return None
     
-    # 对python进行特殊处理，取大版本中的latest小版本
     def filter_python_versions(self, versions):
-        
+        """
+        Perform special processing on Python and take the latest minor version from the major version.
+
+        Parameters:
+        versions (list): version list for python.
+
+        Returns:
+        list: two python version which need to build image.
+        """
         def get_major_version(version):
             return int(version.split('.')[1])
 
@@ -42,14 +61,18 @@ class APIMonitor:
         return result
     
     def get_api_latest_versions(self, software_name, versions):
+        """
+        Get the two most recent versions from the interface.
+        
+        Parameters:
+        software_name (list): software which need to build image.
+        versions (list): version list for software.
+
+        Returns:
+        list: two version which need to build image.
+        """
         if software_name == "python":
             return self.filter_python_versions(versions)
         else:
             return versions[:2]
-        
-    def get_api_first_version(self, software_name, versions):
-        if software_name == "python":
-            filtered_versions = self.filter_python_versions(versions)
-            return filtered_versions[0] if filtered_versions else None
-        else:
-            return versions[0] if versions else None
+
