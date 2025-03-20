@@ -153,9 +153,9 @@ def _transform_version_format(os_version: str):
 
 # AI scenario/solution image-list.yml configuration example:
 images:
-  chatqna: ai/opea/chatqna
-  chatqna-ai: ai/opea/chatqna-ui
-  pytorch: ai/pytorch
+  chatqna: opea/chatqna
+  chatqna-ai: opea/chatqna-ui
+  pytorch: pytorch
 """
 def parse_image_directory(file: str):
     """
@@ -189,17 +189,16 @@ def parse_image_directory(file: str):
 
     # Check if the file path matches any of the image paths in the YAML file
     for key, value in images.items():
-        if not file.startswith(value):
+        prefix_path = image_dir + "/" + value.rstrip("/") + "/"
+        if not file.startswith(prefix_path):
             continue
-        # Extract the suffix path (relative to the image path)
-        prefix_path = value.rstrip("/") + "/"
         suffix_path = file.replace(prefix_path, "")
         suffix_len = len(suffix_path.split("/"))
         format_path = FILE_PATH_FORMAT[file_type]
         format_len = len(format_path.split("/"))
         if suffix_len != format_len - 1:
             continue
-        return value.rstrip("/")
+        return prefix_path.rstrip("/")
     return image_dir
 
 
@@ -209,10 +208,8 @@ def _parse_info_default(file: str, image_dir: str):
 
     `{app-version}/{os-version}/Dockerfile`
     """
-    if not image_dir.endswith("/"):
-        image_dir = image_dir + "/"
-
     # Validate the Dockerfile path structure.
+    image_dir = image_dir.rstrip("/") + "/"
     context_path = file.replace(image_dir, "")
     if len(context_path.split("/")) != DOCKERFILE_PATH_DEPTH:
         raise Exception(
@@ -250,7 +247,8 @@ def _parse_meta_yml(file: str, image_dir: str):
             if not isinstance(tags, dict):
                 raise Exception(f"Format error: {meta}")
             for key in tags:
-                if tags[key]['path'] != file:
+                dockerfile = image_dir + "/" + tags[key]['path']
+                if dockerfile != file:
                     continue
                 tag['tag'] = key
                 if 'arch' in tags[key]:
