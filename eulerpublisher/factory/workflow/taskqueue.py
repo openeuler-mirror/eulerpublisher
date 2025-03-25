@@ -115,24 +115,3 @@ class JobConfig:
 
         return job_queue
 
-
-# def main():
-#     input=[
-#         {
-#             'dockerfile_path': '${{ github.workspace }}/img1.dockerfile',
-#             'image_tag': 'openeuler-python3.10-cann8.0.0',
-#         },
-#         {
-#             'dockerfile_path': '${{ github.workspace }}/img2.dockerfile',
-#             'image_tag': 'openeuler-python3.10-cann8.0.0.beta1',
-#         }
-#     ]
-#     queue = task_queue_generate(input)
-#     for q in queue:
-#         print(f"pop task: {q}")
-
-
-# if __name__ == '__main__':
-#     main()
-    
-

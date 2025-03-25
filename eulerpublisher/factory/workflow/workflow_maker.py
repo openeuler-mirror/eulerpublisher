@@ -159,33 +159,3 @@ class WorkflowMaker:
         res = self.add_head(workflow_name, yaml_content)
 
         return res
-
-# def main():
-#     queue = deque()
-#     j1=JobConfig(job_type='buildpush', dockerfile_path='${{ github.workspace }}/img.dockerfile', image_tag='openeuler-python3.10-cann8.0.0')
-#     j2=JobConfig(job_type='buildpush', dockerfile_path='${{ github.workspace }}/img.dockerfile', image_tag='openeuler-python3.10-cann8.0.0.beta1')
-#     queue.append(j1)
-#     queue.append(j2)
-#     res_str = task_generate(queue, "my test")
-#     print(res_str)
-
-
-# if __name__ == '__main__':
-#     main()
-
-# def main():
-#     input=[
-#         {
-#             'dockerfile_path': '${{ github.workspace }}/img1.dockerfile',
-#             'image_tag': 'ascendai/cann:openeuler-python3.10-cann8.0.0'
-#         },
-#         {
-#             'dockerfile_path': '${{ github.workspace }}/img2.dockerfile',
-#             'image_tag': 'ascendai/cann:openeuler-python3.10-cann8.0.0.beta1'
-#         }
-#     ]
-#     build_workflow("my task1433", input)
-
-
-# if __name__ == '__main__':
-#     main()
