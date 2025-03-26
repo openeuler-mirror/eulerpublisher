@@ -16,19 +16,18 @@ class BuildFactory:
         Builds a task based on the provided input dictionary and generates related Dockerfiles and workflows.
         """
         dockerfile_build_list = []
-        if dependencies is not None:
+        if not dependencies:
+            dict = {'software':software, 'version':version, 'dependence':None}
+            dockerfile_build_list.append(dict)
+        else:
             for dependency in dependencies:
                 dict = {'software':software, 'version':version, 'dependence':dependency}
                 dockerfile_build_list.append(dict)
-        else:
-            dict = {'software':software, 'version':version, 'dependence':None}
-            dockerfile_build_list.append(dict)
-
-        etc_dir = os.path.dirname(os.path.abspath(__file__)) + 'product/etc/'
 
         # generate the dockerfile
-        workflow_build_list = DockerfileGenerate().build_dockerfile(dockerfile_build_list, etc_dir)
-
+        workflow_build_list = DockerfileGenerate().build_dockerfile(dockerfile_build_list)
+        
+        etc_dir = ''
         # generate the workflow
         WorkflowMaker().build_workflow(software+version, workflow_build_list, etc_dir)
         
@@ -71,7 +70,14 @@ class BuildFactory:
             if not cur_versions:
                 logging.warning(f"No versions found for software: {software_name}")
                 continue
-            regex = yaml.safe_load(FILTER_CONFIG_FILE)[software_name]
+            if not os.path.exists(FILTER_CONFIG_FILE):
+                raise FileNotFoundError(f"Filter config file not found at {FILTER_CONFIG_FILE}")
+            
+            with open(FILTER_CONFIG_FILE, 'r') as file:
+                filter_config = yaml.safe_load(file)
+                print("Loaded filter config:", filter_config)  
+            regex = filter_config[software_name]['regex']
+
             latest_two_versions = [version for version in cur_versions if re.match(regex, version)][:2]
             if not old_versions:
                 for version in latest_two_versions:

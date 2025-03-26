@@ -19,8 +19,7 @@ class APIMonitor:
         Returns:
         list: version list for software.
         """
-        # url = f"{BASE_URL}?name={software_name}"
-        url = f"{BASE_URL}?name=cann"
+        url = f"{BASE_URL}?name={software_name}"
         try:
             response = requests.get(url).json()
             versions_data = None

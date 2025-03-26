@@ -1,4 +1,4 @@
-openEuler:
+openeuler:
   regex: ".*LTS$"
   description: "Filter versions that contain 'LTS' and have no additional content after 'LTS'."
 
