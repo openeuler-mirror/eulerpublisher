@@ -3,3 +3,5 @@ datetime
 docker-py
 wget
 schedule
+jinja2
+pyyaml

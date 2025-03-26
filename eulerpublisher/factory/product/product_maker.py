@@ -1,20 +1,33 @@
 import os
+from jinja2 import Environment, FileSystemLoader
 
 class DockerfileGenerate:
     
-    def newdepend(self, image_tag):
+    def render_template(self, template_file: str, output_file: str, software: str, version: str, dependence: str):
         """
-        Simplified tag, to be improved
-
+        Render a template file with the specified software, version, and dependency, and save the output to a file.
+        
         Parameters:
-        image_tag (str): The input string that needs to be sanitized.
-
+        template_file (str): The path to the template file.
+        output_file (str): The path to save the rendered output.
+        software (str): The name of the software.
+        version (str): The version of the software.
+        dependence (str): The base image or dependency for the software.
+        
         Returns:
-        str: A new string with only alphanumeric characters and '-' or '_' retained.
+        None
         """
-        result = ''.join(char for char in image_tag if char.isalnum() or char in '-_')
-        return result
-            
+        if not os.path.exists(template_file):
+            raise FileNotFoundError(f"Template file {template_file} not found.")
+        env = Environment(loader=FileSystemLoader(os.path.dirname(template_file)))
+        template = env.get_template(os.path.basename(template_file))
+        rendered_output = template.render(software=software, version=version, dependence=dependence)
+        # output_file = os.path.join(template_file, f"{item['tags']['common'][0]}.Dockerfile")
+        # with open(output_path, 'w') as f:
+        #     f.write(rendered_content)
+        # print(f"Generated: {output_path}")
+
+
     def build_dockerfile(self, input: list, file_save: str):
         """
         Generate Dockerfiles for a list of software images and save them to a specified directory.
@@ -30,10 +43,6 @@ class DockerfileGenerate:
         list: A list of dictionaries, each containing the 'dockerfile_path' and 'image_tag' keys.
             - 'dockerfile_path' (str): The path to the generated Dockerfile.
             - 'image_tag' (str): The tag for the Docker image.
-        
-        Raises:
-        ValueError: If the Dockerfile template for a software is not found.
-
         Input:
             input=[
                 {
@@ -56,28 +65,17 @@ class DockerfileGenerate:
             version = image.get('version')
             dependence = image.get('dependence')
             
-            file_resource = "/etc/" + software + ".dockerfile"
+            file_resource = "/templates/product/" + software + ".dockerfile"
             file_path = cur_dir + file_resource
-
-            if os.path.isfile(file_path) is not True:
-                raise ValueError("The templates of this software is not exist.")
-
-            # todo: need to normalize naming
-            if dependence:
-                image_tag = dependence + software + "-" + version
-                brief_name = self.newdepend(dependence + software + version)
-                new_name = brief_name + ".dockerfile"
-            else:
-                image_tag = software + "-" + version
-                brief_name = self.newdepend(image_tag + version)
-                new_name = brief_name + ".dockerfile"
-
-            output_file = file_save + new_name
-
-            self.dockerfile_generate(file_path, output_file, dependence, version)
-
-            image_dict = {'dockerfile_path': output_file, 'image_tag':image_tag}
+            output_file = file_save + software + version + ".dockerfile"
+            self.render_template(file_path, output_file, software, version, dependence)
+            
+            
+            image_dict = {'dockerfile_path': output_file, 'image_tag':'image_tag'}
             workflow_build_list.append(image_dict)
-
         return workflow_build_list
 
+# openeuler22.03
+# py3.10
+# cann8.0.0
+# 8.0.0-910b-openeuler22.03-py3.10

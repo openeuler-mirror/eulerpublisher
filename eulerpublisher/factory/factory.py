@@ -1,16 +1,15 @@
 
 import os
 import logging
-from collections import defaultdict
+import yaml
+import re
 from eulerpublisher.composer.db_manager.db_handler import DBHandler
 from eulerpublisher.composer.version_composer.version_monitor import APIMonitor
 from eulerpublisher.factory.product.product_maker import DockerfileGenerate
 from eulerpublisher.factory.workflow.workflow_maker import WorkflowMaker
+from eulerpublisher.utils.constants import FILTER_CONFIG_FILE
 
 class BuildFactory:
-    """
-    A class for automatically trigger incremental image builds.
-    """
     
     def build_task(self, software, version, dependencies):
         """
@@ -72,8 +71,8 @@ class BuildFactory:
             if not cur_versions:
                 logging.warning(f"No versions found for software: {software_name}")
                 continue
-            latest_two_versions = APIMonitor().get_api_latest_versions(software_name, cur_versions)
-                
+            regex = yaml.safe_load(FILTER_CONFIG_FILE)[software_name]
+            latest_two_versions = [version for version in cur_versions if re.match(regex, version)][:2]
             if not old_versions:
                 for version in latest_two_versions:
                     self.recursive_incremental_build(software_name, version)
