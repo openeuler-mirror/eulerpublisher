@@ -4,13 +4,13 @@ from eulerpublisher.utils.constants import TMP_DOCKERFILE_DIR, TEMPLATE_DIR
 
 class DockerfileGenerate:
     
-    def render_template(self, template_file: str, image_tag: str, software: str, version: str, dependence: str):
+    def render_template(self, template_file: str, output_file: str, software: str, version: str, dependence: str):
         """
         Render a template file with the specified software, version, and dependency, and save the output to a file.
         
         Parameters:
         template_file (str): The path to the template file.
-        image_tag (str): The tag for the Docker image.
+        output_file (str): The path to save the rendered output.
         software (str): The name of the software.
         version (str): The version of the software.
         dependence (str): The base image or dependency for the software.
@@ -23,7 +23,6 @@ class DockerfileGenerate:
         env = Environment(loader=FileSystemLoader(os.path.dirname(template_file)))
         template = env.get_template(os.path.basename(template_file))
         rendered_content = template.render(software=software, version=version, dependence=dependence)
-        output_file = os.path.join(TMP_DOCKERFILE_DIR, image_tag, ".Dockerfile")
         with open(output_file, 'w') as f:
             f.write(rendered_content)
 
@@ -58,16 +57,21 @@ class DockerfileGenerate:
         workflow_build_list = []
         if not os.path.exists(TMP_DOCKERFILE_DIR):
             os.makedirs(TMP_DOCKERFILE_DIR)
-
         for image in input:
-            if not os.path.exists(TMP_DOCKERFILE_DIR + "/" + software):
-                os.makedirs(TMP_DOCKERFILE_DIR)
             software = image.get('software')
             version = image.get('version')
             dependence = image.get('dependence')
-            template_file = TEMPLATE_DIR + "/" + software + ".dockerfile"
-            image_tag = version + "-" + dependence
-            output_file = self.render_template(template_file, image_tag, software, version, dependence)
+            template_file = TEMPLATE_DIR + software + ".dockerfile"
+            SOFTWARE_DIR = TMP_DOCKERFILE_DIR + software  
+            if not os.path.exists(SOFTWARE_DIR):
+                os.makedirs(SOFTWARE_DIR)
+            if dependence is None:
+                image_tag = software + version
+                output_file = SOFTWARE_DIR + '/' + image_tag + ".dockerfile"
+            else:
+                image_tag = dependence + '-' + software + version
+                output_file = SOFTWARE_DIR + '/' + image_tag + ".dockerfile"
+            self.render_template(template_file, output_file, software, version, dependence)
             image_dict = {'dockerfile_path': output_file, 'image_tag':'image_tag'}
             workflow_build_list.append(image_dict)
         return workflow_build_list

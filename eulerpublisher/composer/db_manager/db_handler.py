@@ -21,6 +21,7 @@ class DBHandler:
                     cursor.execute(query)
                 conn.commit()
         except sqlite3.Error as e:
+            conn.rollback()
             logging.error(f"Database error during query execution: {e}")
             raise
 
@@ -45,7 +46,7 @@ class DBHandler:
             software_id = self.get_software_id(software_name)
             version_id = self.get_version_id(software_id, version)
             self.execute_query(
-                'INSERT INTO image (software_id, version_id, image_tag, build_date, status, release_url) VALUES (?, ?)', 
+                'INSERT INTO image (software_id, version_id, image_tag, build_date, status, release_url) VALUES (?, ?, ?, ?, ?, ?)', 
                 (software_id, version_id, image_tag, build_date, status, release_url))
         except sqlite3.Error as e:
             logging.error(f"Failed to add image for software {software_name}, version {version}, image_tag {image_tag}: {e}")
