@@ -4,7 +4,7 @@ import os
 
 EP_PATH = None
 OPENEULER_REPO = "http://repo.openeuler.org/"
-OPENEULER_DOCKERFILE = "https://gitee.com/openeuler/openeuler-docker-images/raw/master/openeuler/Dockerfile"
+OPENEULER_DOCKERFILE = "https://gitee.com/openeuler/openeuler-docker-images/raw/master/Base/openeuler/Dockerfile"
 
 paths = [
     os.path.dirname(os.__file__) + "/" + "../../etc/eulerpublisher/",
