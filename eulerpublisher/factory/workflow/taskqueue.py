@@ -39,7 +39,7 @@ class JobConfig:
                 f"dockerfile_path='{self.dockerfile_path}', "
                 f"image_tag='{self.image_tag}')")
    
-    def _generate_job_name(self, job_type: str, image_tag: str) -> str:
+    def _generate_job_name(self, job_type: str, image_tag: str):
         """
         Generates a job name by combining the job type and a sanitized version of the image tag.
 
@@ -55,81 +55,63 @@ class JobConfig:
         return f"{job_type}_{sanitized_tag}"
 
 
-def task_queue_generate( 
-    job_configs_list: List[Dict[str, Optional[str]]],
-    buildpush: bool = True,
-    build: bool = False,
-    test: bool = False,
-    cve: bool = False,
-    sign: bool = False,
-    push: bool = False
- ) -> deque:
-    """
-    Generate a task queue based on job configurations and task flags.
+    def task_queue_generate( 
+        self,
+        job_configs_list: List[Dict[str, Optional[str]]],
+        buildpush: bool = True,
+        build: bool = False,
+        test: bool = False,
+        cve: bool = False,
+        sign: bool = False,
+        push: bool = False
+    ):
+        """
+        Generate a task queue based on job configurations and task flags.
 
-    Parameters:
-    - job_configs_list: A list of dictionaries containing 'dockerfile_path' and 'image_tag'.
-    - buildpush: Include a combined build and push task if True.
-    - build: Include a build task if True.
-    - test: Include a test task if True.
-    - cve: Include a CVE scan task if True.
-    - sign: Include a signing task if True.
-    - push: Include a push task if True.
+        Parameters:
+        - job_configs_list: A list of dictionaries containing 'dockerfile_path' and 'image_tag'.
+        - buildpush: Include a combined build and push task if True.
+        - build: Include a build task if True.
+        - test: Include a test task if True.
+        - cve: Include a CVE scan task if True.
+        - sign: Include a signing task if True.
+        - push: Include a push task if True.
 
-    Raises:
-    - ValueError: If invalid task combinations are specified.
+        Raises:
+        - ValueError: If invalid task combinations are specified.
 
-    Returns:
-    - A deque containing JobConfig objects.
-    """
-    if buildpush and any([build, test, cve, sign, push]):
-        raise ValueError("buildpush cannot be True when any other task is specified.")
+        Returns:
+        - A deque containing JobConfig objects.
+        """
+        if buildpush and any([build, test, cve, sign, push]):
+            raise ValueError("buildpush cannot be True when any other task is specified.")
 
-    if not build and any([test, cve, sign, push]):
-        raise ValueError("build must be True when any other task (test, cve, sign, push) is specified.")
+        if not build and any([test, cve, sign, push]):
+            raise ValueError("build must be True when any other task (test, cve, sign, push) is specified.")
 
-    job_types_map = {
-        'buildpush': ('buildpush', buildpush),
-        'build': ('imagebuild', build),
-        'test': ('imagetest', test),
-        'cve': ('cvescan', cve),
-        'sign': ('signature', sign),
-        'push': ('imagepush', push)
-    }
-
-    job_queue = deque()
-    for job_config_dict in job_configs_list:
-        dockerfile_path = job_config_dict.get('dockerfile_path')
-        image_tag = job_config_dict.get('image_tag')
-
-        if dockerfile_path is None or image_tag is None:
-            raise ValueError("Both dockerfile_path and image_tag can not be None.")
-
-        for _, (job_type, should_add) in job_types_map.items():
-            if should_add:
-                job_config = JobConfig(job_type, dockerfile_path, image_tag)
-                job_queue.append(job_config)
-                if job_type == 'buildpush':
-                    break
-
-    return job_queue
-
-
-def main():
-    input=[
-        {
-            'dockerfile_path': '${{ github.workspace }}/img1.dockerfile',
-            'image_tag': 'openeuler-python3.10-cann8.0.0',
-        },
-        {
-            'dockerfile_path': '${{ github.workspace }}/img2.dockerfile',
-            'image_tag': 'openeuler-python3.10-cann8.0.0.beta1',
+        job_types_map = {
+            'buildpush': ('buildpush', buildpush),
+            'build': ('imagebuild', build),
+            'test': ('imagetest', test),
+            'cve': ('cvescan', cve),
+            'sign': ('signature', sign),
+            'push': ('imagepush', push)
         }
-    ]
-    queue = task_queue_generate(input)
-    for q in queue:
-        print(f"pop task: {q}")
 
+        job_queue = deque()
+        for job_config_dict in job_configs_list:
+            dockerfile_path = job_config_dict.get('dockerfile_path')
+            image_tag = job_config_dict.get('image_tag')
 
-if __name__ == '__main__':
-    main()
+            if dockerfile_path is None or image_tag is None:
+                raise ValueError("Both dockerfile_path and image_tag can not be None.")
+
+            for _, (job_type, should_add) in job_types_map.items():
+                if should_add:
+                    job_config = JobConfig(job_type, dockerfile_path, image_tag)
+                    job_queue.append(job_config)
+                    if job_type == 'buildpush':
+                        break
+
+        return job_queue
+
