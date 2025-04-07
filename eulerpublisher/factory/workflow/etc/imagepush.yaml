@@ -1,3 +1,0 @@
-  -
-    name: Image Push
-    uses: actions/checkout@v4

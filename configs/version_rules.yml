@@ -1,0 +1,19 @@
+openeuler:
+  pattern: ^(\d+)\.(\d+)(\.LTS)?(\.SP\d+)?$
+  keep_levels: 
+  exclude_patterns: [^(\d+)\.(\d+)$]
+
+python:
+  pattern: ^(\d+)\.(\d+)\.(\d+)$
+  keep_levels: [major, minor]
+  exclude_patterns:
+  
+cann:
+  pattern: ^(\d+)\.(\d+)\.(\d+|RC\d+)\.(alpha\d+|beta\d+)$
+  keep_levels: [major, minor]
+  exclude_patterns:
+
+pytorch:
+  pattern: ^(\d+)\.(\d+)\.(\d+)$
+  keep_levels: [major, minor]
+  exclude_patterns: 

@@ -1,0 +1,10 @@
+ARG BASE={{ base }}
+
+FROM ${BASE}
+
+ARG VERSION={{ version }}
+
+RUN yum install -y python3-pip
+
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu \
+    torch==${VERSION}

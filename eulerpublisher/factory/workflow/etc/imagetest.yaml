@@ -1,3 +1,0 @@
-  -
-    name: Image Test
-    uses: actions/checkout@v4

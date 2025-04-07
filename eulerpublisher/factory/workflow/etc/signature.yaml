@@ -1,3 +1,0 @@
-  -
-    name: Image Signature
-    uses: actions/checkout@v4

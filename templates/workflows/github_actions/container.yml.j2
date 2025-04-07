@@ -1,0 +1,132 @@
+  {% for arch in archs %}
+  build-{{ name }}-{{ arch }}:
+    {% if needs %}
+    needs: 
+      - push-{{ needs }}
+    {% endif %}
+    runs-on: ubuntu-24.04{% if arch == 'aarch64' %}-arm{% endif %}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      {% for registry in registries %}
+        {% if registry == 'docker.io' %}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: {% raw %}${{ secrets.DOCKERHUB_USERNAME }}{% endraw %}
+          password: {% raw %}${{ secrets.DOCKERHUB_TOKEN }}{% endraw %}
+        {% elif registry == 'quay.io' %}
+      - name: Login to Quay.io
+        uses: docker/login-action@v3
+        with:
+          registry: quay.io
+          username: {% raw %}${{ secrets.QUAY_USERNAME }}{% endraw %}
+          password: {% raw %}${{ secrets.QUAY_TOKEN }}{% endraw %}
+        {% elif registry == 'hub.oepkgs.net' %}
+      - name: Login to OEPKGS
+        uses: docker/login-action@v3
+        with:
+          registry: hub.oepkgs.net
+          username: {% raw %}${{ secrets.OEPKGS_USERNAME }}{% endraw %}
+          password: {% raw %}${{ secrets.OEPKGS_TOKEN }}{% endraw %}
+        {% endif %}
+      {% endfor %}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push by digest
+        uses: docker/build-push-action@v6
+        id: build
+        with: 
+          platforms: {{ arch }}
+          tags: |
+            {% for registry in registries %}
+            {{ registry }}/{{ repository }}/{{ name }}
+            {% endfor %}
+          file: {% raw %}${{ github.workspace }}{% endraw %}/{{ name }}/Dockerfile
+          context: {% raw %}${{ github.workspace }}{% endraw %}/{{ name }}
+          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        run: |
+          mkdir -p {% raw %}${{ runner.temp }}{% endraw %}/digests
+          digest="{% raw %}${{ steps.build.outputs.digest }}{% endraw %}"
+          touch "{% raw %}${{ runner.temp }}{% endraw %}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-{{ name }}-{{ arch }}
+          path: {% raw %}${{ runner.temp }}{% endraw %}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+  {% endfor %}
+
+  push-{{ name }}:
+    runs-on: {{ runner }}
+    needs:
+      {% for arch in archs %}
+      - build-{{ name }}-{{ arch }}
+      {% endfor %}
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: {% raw %}${{ runner.temp }}{% endraw %}/digests
+          pattern: digests-{{ name }}-*
+          merge-multiple: true
+
+      {% for registry in registries %}
+        {% if registry == 'docker.io' %}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: {% raw %}${{ secrets.DOCKERHUB_USERNAME }}{% endraw %}
+          password: {% raw %}${{ secrets.DOCKERHUB_TOKEN }}{% endraw %}
+        {% elif registry == 'quay.io' %}
+      - name: Login to Quay.io
+        uses: docker/login-action@v3
+        with:
+          registry: quay.io
+          username: {% raw %}${{ secrets.QUAY_USERNAME }}{% endraw %}
+          password: {% raw %}${{ secrets.QUAY_TOKEN }}{% endraw %}
+        {% elif registry == 'hub.oepkgs.net' %}
+      - name: Login to OEPKGS
+        uses: docker/login-action@v3
+        with:
+          registry: hub.oepkgs.net
+          username: {% raw %}${{ secrets.OEPKGS_USERNAME }}{% endraw %}
+          password: {% raw %}${{ secrets.OEPKGS_TOKEN }}{% endraw %}
+        {% endif %}
+      {% endfor %}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create manifest list and push
+        working-directory: {% raw %}${{ runner.temp }}{% endraw %}/digests
+        run: |
+          {% for registry in registries %}
+          docker buildx imagetools create -t {{ registry }}/{{ repository }}/{{ name }}:{{ tag }} \
+            $(printf '{{ repository }}/{{ name }}@sha256:%s ' *)
+          {% endfor %}
+
+      - name: Check status
+        uses: eferraris/rabbit-sender@v1
+        with:
+          MESSAGE: "{ \"repository\": \"{{ repository }}\", \"name\": \"{{ name }}\", \"tag\": \"{{ tag }}\", \"status\": {% raw %}\"${{ job.status }}\"{% endraw %} }"
+          RABBIT_EXCHANGE_NAME: "eulerpublisher"
+          ROUTING_KEY: "tracker"
+          RABBIT_HOST: {% raw %}${{ secrets.RABBIT_HOST }}{% endraw %}
+          RABBIT_USERNAME: {% raw %}${{ secrets.RABBIT_USERNAME }}{% endraw %}
+          RABBIT_PASSWORD: {% raw %}${{ secrets.RABBIT_PASSWORD }}{% endraw %}
+          RABBIT_PORT: 5672
+          RABBIT_USE_SSL: false
+          DURABLE: false
