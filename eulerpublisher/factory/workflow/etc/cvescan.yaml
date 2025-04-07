@@ -1,3 +1,0 @@
-  -
-    name: CVE Scanner
-    uses: actions/checkout@v4
