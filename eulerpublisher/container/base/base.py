@@ -9,7 +9,7 @@ import yaml
 
 
 import eulerpublisher.publisher.publisher as pb
-from eulerpublisher.publisher import EP_PATH, OPENEULER_DOCKERFILE
+from eulerpublisher.publisher import EP_PATH, OPENEULER_DOCKERFILE, logger
 from eulerpublisher.publisher import OPENEULER_REPO
 
 CACHE_DATA_PATH = "/tmp/eulerpublisher/container/base/"
@@ -120,14 +120,14 @@ class OePublisher(pb.Publisher):
                 download_url = OPENEULER_REPO + index + file_name
                 if pb.download(download_url) != pb.PUBLISH_SUCCESS:
                     return pb.PUBLISH_FAILED
-                click.echo("\n[Prepare] Download %s successfully." % file_name)
+                logger.info("\n[Prepare] Download %s successfully." % file_name)
             # check
             sha256sum = file_name + ".sha256sum"
             subprocess.call(["rm", "-rf", sha256sum])
             sha256sum_url = OPENEULER_REPO + index + sha256sum
             if pb.download(sha256sum_url) != pb.PUBLISH_SUCCESS:
                 return pb.PUBLISH_FAILED
-            click.echo("\n[Prepare] Download %s successfully." % sha256sum)
+            logger.info("\n[Prepare] Download %s successfully." % sha256sum)
             subprocess.call(["shasum", "-c", sha256sum])
             # get rootfs
             rootfs = "openEuler-docker-rootfs." + docker_arch + ".tar.xz"
@@ -147,7 +147,7 @@ class OePublisher(pb.Publisher):
                     subprocess.call(
                         ["xz", "-z", "openEuler-docker-rootfs." + docker_arch + ".tar"]
                     )
-        click.echo("[Prepare] finished")
+        logger.info("[Prepare] finished")
         return pb.PUBLISH_SUCCESS
 
     def build_and_push(self):
@@ -184,8 +184,8 @@ class OePublisher(pb.Publisher):
             if ret != 0:
                 return pb.PUBLISH_FAILED
         except (OSError, subprocess.CalledProcessError) as err:
-            click.echo(click.style(f"[Build and Push] {err}", fg="red"))
-        click.echo("[Build and Push] finished")
+            logger.error(f"[Build and Push] {err}")
+        logger.info("[Build and Push] finished")
         return pb.PUBLISH_SUCCESS
 
     # Run test script
@@ -194,13 +194,11 @@ class OePublisher(pb.Publisher):
             if not script:
                 script = TESTCASE_PATH
             if not os.path.exists(script):
-                click.echo(click.style(
-                    f"[Check] test script `{script}` does not exist", fg="red"
-                ))
+                logger.error(f"[Check] test script `{script}` does not exist")
                 return pb.PUBLISH_FAILED
             if tag == "latest":
                 tag = _get_latest_version().lower()
-            click.echo(click.style(f"[Check] checking openeuler:{tag} ..."))
+            logger.info(f"[Check] checking openeuler:{tag} ...")
             env_vars = {'DOCKER_TAG': tag}
             os.chmod(script, 0o755)
             process = subprocess.Popen(
@@ -209,24 +207,24 @@ class OePublisher(pb.Publisher):
                 env={**os.environ, **env_vars}
             )
             if process.wait() != 0:
-                click.echo(click.style(f"[Check] test failed", fg="red"))
+                logger.error(f"[Check] test failed")
                 return pb.PUBLISH_FAILED
         except subprocess.CalledProcessError as err:
-            click.echo(click.style(f"[Check] {err}", fg="red"))
-        click.echo("[Check] finished")
+            logger.critical(f"[Check] {err}")
+        logger.info("[Check] finished")
         return pb.PUBLISH_SUCCESS
 
     # Publish with one click
     def publish(self):
-        click.echo("\n[Publish] start to publish openEuler-" + self.version.upper())
+        logger.info("\n[Publish] start to publish openEuler-" + self.version.upper())
         if self.prepare() != pb.PUBLISH_SUCCESS:
-            click.echo(click.style("[Publish] Download failed.", fg="red"))
+            logger.error("[Publish] Download failed.")
             return pb.PUBLISH_FAILED
         if self.build_and_push() != pb.PUBLISH_SUCCESS:
-            click.echo(click.style("[Publish] Build and push failed.", fg="red"))
+            logger.error("[Publish] Build and push failed.")
             return pb.PUBLISH_FAILED
         if self.check(tag=self.version.lower()) != pb.PUBLISH_SUCCESS:
-            click.echo(click.style("[Publish] Unit test failed.", fg="red"))
+            logger.error("[Publish] Unit test failed.")
             return pb.PUBLISH_FAILED
-        click.echo("[Publish] finished")
+        logger.info("[Publish] finished")
         return pb.PUBLISH_SUCCESS

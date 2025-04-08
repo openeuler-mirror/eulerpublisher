@@ -12,6 +12,7 @@ import yaml
 
 from packaging.version import Version
 from prettytable import PrettyTable
+from eulerpublisher.publisher import logger
 
 DEFAULT_WORKDIR = "/tmp/eulerpublisher/ci/container/"
 REPOSITORY_REQUEST_URL = (
@@ -255,9 +256,7 @@ def _parse_meta_yml(file: str, image_dir: str):
                     arch = tags[key]['arch']
                 break
         except yaml.YAMLError as e:
-            raise click.echo(click.style(
-                f"Error in YAML file : {file} : {e}", fg="red"
-            ))
+            raise logger.error(f"Error in YAML file : {file} : {e}")
 
     # generate the default tag
     os_version, image_version, image_name = (
@@ -284,7 +283,7 @@ def _push_readme(file: str, namespace: str, image: str):
             env={**os.environ, 'APIKEY__QUAY_IO': os.environ["DOCKER_QUAY_APIKEY"]}
         )
     except subprocess.CalledProcessError as err:
-        click.echo(click.style(f"{err}", fg="red"))
+        logger.error(f"{err}", fg="red"))
 
 
 def _check_document(self):
@@ -427,9 +426,7 @@ def _check_image_content(self):
                 continue
             result = 1
         except yaml.YAMLError as e:
-            raise click.echo(
-                click.style(f"Error in YAML file : {file} : {e}", fg="red")
-            )
+            raise e
     print(table)
     return result
 
@@ -454,6 +451,85 @@ def _check_key_exist(table, lines, image):
         ])
     return result
 
+def _check_app_image(file: str):
+    # build and push multi-platform image to `openeulertest`
+    image_dir = parse_image_directory(file)
+    name, tag, arch = _parse_meta_yml(file=file, image_dir=image_dir)
+    if subprocess.call([
+        "eulerpublisher",
+        "container",
+        "app",
+        "publish",
+        "-a", arch,
+        "-p", f"{TEST_NAMESPACE}/{name}",
+        "-t", tag['tag'],
+        "-l", tag['latest'],
+        "-f", file
+    ]) != 0:
+        return 1
+    # check image pulled from hub
+    if subprocess.call([
+        "eulerpublisher",
+        "container",
+        "app",
+        "check",
+        "-h", TEST_NAMESPACE,
+        "-n", name,
+        "-t", tag['tag']
+    ]) != 0:
+        return 1
+    return 0
+    
+def _check_distroless_image(file: str):
+    # build and push distroless image to `openeulertest`
+    image_dir = parse_image_directory(file)
+    name, tag, arch = _parse_meta_yml(file=file, image_dir=image_dir)
+    if subprocess.call([
+        "eulerpublisher",
+        "container",
+        "distroless",
+        "publish",
+        "-p", f"{TEST_NAMESPACE}/{name}",
+        "-t", tag['tag'],
+        "-f", file
+    ]) != 0:
+        return 1
+    return 0
+
+def _publish_app_image(file: str, image_dir: str):
+    # build and push multi-platform image to `openeuler`
+    name, tag, arch = _parse_meta_yml(file=file, image_dir=image_dir)
+    if subprocess.call([
+        "eulerpublisher",
+        "container",
+        "app",
+        "publish",
+        "-a", arch,
+        "-p", f"{OFFICIAL_NAMESPACE}/{name}",
+        "-t", tag['tag'],
+        "-l", tag['latest'],
+        "-s", f"{TEST_NAMESPACE}/{name}:{tag['tag']}",
+        "-f", file,
+        "-m"
+    ]) != 0:
+        return tag['tag']
+    return ""
+
+def _publish_distroless_image(file: str, image_dir: str):
+    # build and push distroless image to `openeuler`
+    name, tag, arch = _parse_meta_yml(file=file, image_dir=image_dir)
+    if subprocess.call([
+        "eulerpublisher",
+        "container",
+        "distroless",
+        "publish",
+        "-p", f"{OFFICIAL_NAMESPACE}/{name}",
+        "-t", tag['tag'],
+        "-f", file,
+        "-m"
+    ]) != 0:
+        return tag['tag']
+    return ""
 
 class ContainerVerification:
     '''
@@ -489,10 +565,7 @@ class ContainerVerification:
             for file in files:
                 self.change_files.append(file['filename'])
         else:
-            click.echo(click.style(
-                f"Failed to fetch files: {response.status_code}",
-                fg="red"
-            ))
+            logger.error(f"Failed to fetch files: {response.status_code}")
             return 1
         return 0
 
@@ -506,9 +579,9 @@ class ContainerVerification:
         if subprocess.call(
             ['git', 'clone', '-b', s_branch, s_repourl, self.workdir]
         ) != 0:
-            click.echo(click.style(f"Failed to clone {s_repourl}", fg="red"))
+            logger.error(f"Failed to clone {s_repourl}")
             return 1
-        click.echo(click.style(f"Clone {s_repourl} successfully."))
+        logger.info(f"Clone {s_repourl} successfully.")
         return 0
 
     def check_updates(self):
@@ -516,36 +589,16 @@ class ContainerVerification:
         # build update images by Dockerfiles
         for file in self.change_files:
             if not os.path.exists(file):
-                click.echo(click.style(f"The file: {file} is deleted, no need to check."))
+                logger.info(f"The file: {file} is deleted, no need to check.")
                 continue
-            if os.path.basename(file) != "Dockerfile":
+            if os.path.basename(file) == "Dockerfile":
+                if _check_app_image(file=file) != 0:
+                    return 1
+            elif os.path.basename(file) == "build.yml":
+                if _check_distroless_image(file=file) != 0:
+                    return 1
+            else:
                 continue
-            # build and push multi-platform image to `openeulertest`
-            image_dir = parse_image_directory(file)
-            name, tag, arch = _parse_meta_yml(file=file, image_dir=image_dir)
-            if subprocess.call([
-                "eulerpublisher",
-                "container",
-                "app",
-                "publish",
-                "-a", arch,
-                "-p", f"{TEST_NAMESPACE}/{name}",
-                "-t", tag['tag'],
-                "-l", tag['latest'],
-                "-f", file
-            ]) != 0:
-                return 1
-            # check image pulled from hub
-            if subprocess.call([
-                "eulerpublisher",
-                "container",
-                "app",
-                "check",
-                "-h", TEST_NAMESPACE,
-                "-n", name,
-                "-t", tag['tag']
-            ]) != 0:
-                return 1
         return 0
     
     def check_code(self):
@@ -556,48 +609,33 @@ class ContainerVerification:
         # list total check results items
         check_result = 0
         if path_check_result:
-            click.echo(click.style(
-                "There are some wrong file paths in this PR."
-                " The file path check results of the related images are as above.",
-                fg="red",
-            ))
+            logger.error("There are some wrong file paths in this PR."
+                " The file path check results of the related images are as above.")
             check_result = 1
         else:
-            click.echo(click.style(
-                "The file paths check in this PR has passed.",
-                fg="green"
-            ))
+            logger.info("The file paths check in this PR has passed.")
 
         # Check the content format for image-info.yml
         content_check_result = _check_image_content(self)
         if content_check_result:
-            click.echo(click.style(
+            logger.error(
                 "There are some format errors in `image-info.yml`, "
-                "please check as above.",
-                fg="red",
-            ))
+                "please check as above."
+            )
             check_result = 1
         else:
-            click.echo(click.style(
-                "The image-info.yml file content format check has passed.",
-                fg="green",
-            ))
+            logger.info("The image-info.yml file content format check has passed.")
 
         # Check image specifications for releasing on appstore
         document_check_result = _check_document(self)
         if document_check_result:
-            click.echo(click.style(
+            logger.error(
                 "There are some specification errors for "
-                "releasing on appstore in this PR, please check as above.",
-                fg="red",
-            ))
+                "releasing on appstore in this PR, please check as above."
+            )
             check_result = 1
         else:
-            click.echo(click.style(
-                "The image specification check for "
-                "releasing on appstore has passed.",
-                fg="green",
-            ))
+            logger.info("The image specification check for releasing on appstore has passed.")
         return check_result
 
     def publish_updates(self):
@@ -605,7 +643,7 @@ class ContainerVerification:
         failed_tags = []
         for file in self.change_files:
             if not os.path.exists(file):
-                click.echo(click.style(f"The file: {file} is deleted, no need to publish."))
+                logger.info(f"The file: {file} is deleted, no need to publish.")
                 continue
             # update readme while changed file is README.md
             image_dir = parse_image_directory(file)
@@ -613,28 +651,20 @@ class ContainerVerification:
             if os.path.basename(file) == "README.md":
                 _push_readme(file=file, namespace="openeuler", image=image)
                 continue
-            if os.path.basename(file) != "Dockerfile":
+            if os.path.basename(file) == "Dockerfile":
+                failed = _publish_app_image(file=file, image_dir=image_dir)
+                if failed:
+                    failed_tags.append(failed)
+            elif os.path.basename(file) == "build.yml":
+                failed = _publish_distroless_image(file=file, image_dir=image_dir)
+                if failed:
+                    failed_tags.append(failed)
+            else:
                 continue
-            # build and push multi-platform image to `openeuler`
-            name, tag, arch = _parse_meta_yml(file=file, image_dir=image_dir)
-            if subprocess.call([
-                "eulerpublisher",
-                "container",
-                "app",
-                "publish",
-                "-a", arch,
-                "-p", f"{OFFICIAL_NAMESPACE}/{name}",
-                "-t", tag['tag'],
-                "-l", tag['latest'],
-                "-s", f"{TEST_NAMESPACE}/{name}:{tag['tag']}",
-                "-f", file,
-                "-m"
-            ]) != 0:
-                failed_tags.append(tag['tag'])
         if len(failed_tags) == 0:
             return 0
         else:
-            click.echo(click.style(f"Failed to publish image:{failed_tags}", fg="red"))
+            logger.error(f"Failed to publish image:{failed_tags}")
             return 1
 
 
@@ -685,9 +715,7 @@ if __name__ == "__main__":
  
     if obj.get_change_files():
         sys.exit(1)
-    click.echo(click.style(
-        f"Difference: {json.dumps(obj.change_files, indent=4)}"
-    ))
+    logger.info(f"Difference: {json.dumps(obj.change_files, indent=4)}")
     if obj.pull_source_code():
         sys.exit(1)
             
@@ -701,8 +729,5 @@ if __name__ == "__main__":
         if obj.check_updates():
             sys.exit(1)
     else:
-        click.echo(click.style(
-            f"Unsupported operation: {args.operation}",
-            fg="red"
-        ))
+        logger.error(f"Unsupported operation: {args.operation}")
     sys.exit(0)

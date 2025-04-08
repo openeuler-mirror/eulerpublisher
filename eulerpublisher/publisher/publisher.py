@@ -7,7 +7,7 @@ import subprocess
 import wget
 import time
 import yaml
-
+from eulerpublisher.publisher import logger
 
 # global variables
 PUBLISH_FAILED = 1
@@ -40,19 +40,13 @@ def start_docker():
                 stderr=subprocess.STDOUT,
             )
         else:
-            click.echo(click.style("\nUnsupported system %s." % syst, fg="red"))
-        click.echo("Starting docker ...")
+            logger.error("Unsupported system %s." % syst)
+        logger.info("Starting docker ...")
     while subprocess.call(
         ["docker", "info"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT
     ):
         if cnt >= START_TIMEOUT:
-            click.echo(
-                click.style(
-                    "\nFailed to start docker, "
-                    "please restart docker manually.",
-                    fg="red",
-                )
-            )
+            logger.error("Failed to start docker, please restart docker manually.")
             return PUBLISH_FAILED
         time.sleep(5)
         cnt += 5
@@ -66,52 +60,19 @@ def download(url):
             wget.download(url)
             return PUBLISH_SUCCESS
         except Exception as err:
-            click.echo(
-                click.style(
-                    f"\nTry {retry_cnt+1}/{RETRY_DOWNLOAD}" " failure: " + str(err),
-                    fg="red",
-                )
-            )
+            logger.error(f"Try {retry_cnt+1}/{RETRY_DOWNLOAD} failure: " + str(err))
             time.sleep(5)
             retry_cnt += 1
     return PUBLISH_FAILED
 
 
 def check_qemu():
-    if (
-        subprocess.call(
+    if subprocess.call(
             ["qemu-img", "--version"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-        )
-        != 0
-    ):
-        click.echo(
-            click.style(
-                "\n[Prepare] please install qemu first, \
-            you can use command `yum install qemu-img>`.",
-                fg="red",
-            )
-        )
-        return PUBLISH_FAILED
-    return PUBLISH_SUCCESS
-    
-def check_slim():
-    if (
-        subprocess.call(
-            ["slim", "--version"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-        )
-        != 0
-    ):
-        click.echo(
-            click.style(
-                "\n[Prepare] please install slim first, \
-            you can use command `curl -sL https://raw.githubusercontent.com/slimtoolkit/slim/master/scripts/install-slim.sh | sudo -E bash - `.",
-                fg="red",
-            )
-        )
+    ) != 0:
+        logger.error("[Prepare] please install qemu first, you can use command `yum install qemu-img>`.")
         return PUBLISH_FAILED
     return PUBLISH_SUCCESS
 
@@ -126,7 +87,6 @@ def create_builder():
     return builder
 
 
-# login
 def login_registry(registry, multi):
     # login single registry
     if not multi:
