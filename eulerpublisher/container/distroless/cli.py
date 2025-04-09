@@ -25,7 +25,7 @@ def group():
 )
 @click.option(
     "-f",
-    "--configfile",
+    "--distrofile",
     required=True,
     help="The configuration file named `Distrofile` to define how to build your distroless images. "
 )
@@ -35,8 +35,8 @@ def group():
     default="latest",
     help="The distroless container image tag.",
 )
-def build(repo, configfile, tag):
-    obj = DistrolessPublisher(repo=repo, configfile=configfile, tag=tag)
+def build(repo, distrofile, tag):
+    obj = DistrolessPublisher(repo=repo, distrofile=distrofile, tag=tag)
     ret = obj.build()
     if ret != pb.PUBLISH_SUCCESS:
         sys.exit(1)
@@ -65,7 +65,7 @@ def build(repo, configfile, tag):
 )
 @click.option(
     "-f",
-    "--configfile",
+    "--distrofile",
     required=True,
     help="The configuration file named `Distrofile` to define how to build your distroless images. "
 )
@@ -86,7 +86,7 @@ def build(repo, configfile, tag):
     "The default target repositories are provided in "
     "config/container/distroless/registry.yaml."
 )
-def publish(repo, registry, configfile, tag, mpublish):
+def publish(repo, registry, distrofile, tag, mpublish):
     if mpublish and registry:
         logger.warning("`-g, --registry` option will not be used "
             "while `-m, --mpublish` is set.")
@@ -95,7 +95,7 @@ def publish(repo, registry, configfile, tag, mpublish):
     obj = DistrolessPublisher(
         repo=repo,
         registry=registry,
-        configfile=configfile,
+        distrofile=distrofile,
         tag=tag,
         multi=mpublish
     )
