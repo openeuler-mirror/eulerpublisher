@@ -7,7 +7,7 @@ import yaml
 
 
 import eulerpublisher.publisher.publisher as pb
-from eulerpublisher.publisher import EP_PATH
+from eulerpublisher.publisher import EP_PATH, logger
 
 
 DEFAULT_REGISTRY = EP_PATH + "config/container/app/registry.yaml"
@@ -106,7 +106,7 @@ class AppPublisher(pb.Publisher):
                 return pb.PUBLISH_FAILED
         except (OSError, subprocess.CalledProcessError) as err:
             raise err
-        click.echo("[Build] finished")
+        logger.info("[Build] finished")
         return pb.PUBLISH_SUCCESS
 
     def push(self):
@@ -122,8 +122,8 @@ class AppPublisher(pb.Publisher):
                 if subprocess.call("docker push " + tag, shell=True) != 0:
                     return pb.PUBLISH_FAILED
         except (OSError, subprocess.CalledProcessError) as err:
-            click.echo(click.style(f"[Push] {err}", fg="red"))
-        click.echo("[Push] finished")
+            logger.error(f"[Push] {err}")
+        logger.info("[Push] finished")
         return pb.PUBLISH_SUCCESS
     
     # this function is only used for publishing multi-platform image
@@ -138,8 +138,8 @@ class AppPublisher(pb.Publisher):
             if self.build(op="push") != pb.PUBLISH_SUCCESS:
                 return pb.PUBLISH_FAILED
         except (OSError, subprocess.CalledProcessError) as err:
-            click.echo(click.style(f"[Push] {err}", fg="red"))
-        click.echo("[Push] finished")
+            logger.error(f"[Push] {err}")
+        logger.info("[Push] finished")
         return pb.PUBLISH_SUCCESS
     
     # Run test script
@@ -148,13 +148,9 @@ class AppPublisher(pb.Publisher):
             if not script:
                 script = TESTCASE_PATH + image_name + TESTCASE_SUFFIX
             if not os.path.exists(script):
-                click.echo(click.style(
-                    f"[Check] File: {script} does not exist, no test runs."
-                ))
+                logger.warning(f"[Check] File: {script} does not exist, no test runs.")
                 return pb.PUBLISH_SUCCESS
-            click.echo(
-                click.style(f"[Check] checking {namespace}/{image_name}:{tag} ...")
-            )
+            logger.info(f"[Check] checking {namespace}/{image_name}:{tag} ...")
             env_vars = {
                 'DOCKER_TAG': tag,
                 'DOCKER_NAMESPACE': namespace
@@ -166,11 +162,11 @@ class AppPublisher(pb.Publisher):
                 env={**os.environ, **env_vars}
             )
             if process.wait() != 0:
-                click.echo(click.style(f"[Check] test failed", fg="red"))
+                logger.critical(f"[Check] test failed")
                 return pb.PUBLISH_FAILED
         except subprocess.CalledProcessError as err:
-            click.echo(click.style(f"[Check] {err}", fg="red"))
-        click.echo("[Check] All tests are finished.")
+            logger.error(f"[Check] {err}")
+        logger.info("[Check] All tests are finished.")
         return pb.PUBLISH_SUCCESS
     
     def copy_and_push(self, source: str):
@@ -185,6 +181,6 @@ class AppPublisher(pb.Publisher):
             ) != 0:
                 return pb.PUBLISH_FAILED
         except (OSError, subprocess.CalledProcessError) as err:
-            click.echo(click.style(f"[Push] {err}", fg="red"))
-        click.echo("[Copy_and_Push] finished")       
+            logger.error(f"[Push] {err}")
+        logger.info("[Copy_and_Push] finished")       
         return pb.PUBLISH_SUCCESS

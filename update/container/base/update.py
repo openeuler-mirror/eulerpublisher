@@ -6,6 +6,7 @@ import re
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
+from eulerpublisher.publisher import logger
 
 
 UPDATE_VERSIONS = sys.argv[1:]
@@ -68,7 +69,7 @@ def search_hub(url=DEFAULT_HUB):
         last_updated = result["last_updated"]
         tags.append((tag, last_updated))
     if not tags:
-        click.echo(click.style(f"{url} has no tag!", fg="red"))
+        logger.error(f"{url} has no tag!")
     return tags
 
 
@@ -89,20 +90,14 @@ def publish_updates(hubtags=[]):
             pattern=UPDATE_PATTERN
         )
         if not repo_latest:
-            click.echo(
-                click.style(
-                    f"{version} has no update.", fg="green"
-                )
-            )
+            logger.info(f"{version} has no update.")
             continue
         hub_last_updated = get_date(tag=version.lower(), tag_list=hubtags)
         hub_dts = datetime.strptime(hub_last_updated, "%Y-%m-%dT%H:%M:%S.%fZ")
         repo_dts = datetime.strptime(repo_date, "%Y-%b-%d %H:%M")
         days_diff = (repo_dts - hub_dts).total_seconds() / SECONDS_PER_DAY
         if days_diff > 1:
-            click.echo(
-                click.style(f"{version} is updating ...", fg="blue")
-            )
+            logger.info(f"{version} is updating ...")
             # run eulerpublisher to update
             if subprocess.call([
                 "eulerpublisher", "container", "base", "publish",
@@ -112,9 +107,7 @@ def publish_updates(hubtags=[]):
             ]) != 0:
                 return 1
         else:
-            click.echo(
-                click.style(f"{version} has no update.", fg="green")
-            )
+            logger.info(f"{version} has no update.")
     return 0
 
 
@@ -124,24 +117,14 @@ def publish_new(hubtags=[]):
         pattern=VERSION_PATTERN
     )
     if not repo_latest:
-        click.echo(
-            click.style(
-                "Result is null, please check searching pattern!",
-                fg="red"
-            )
-        )
+        logger.error("Result is null, please check searching pattern!")
         return 1
     if repo_latest.endswith('/'):
         repo_latest = repo_latest.rstrip('/')
     new_version = repo_latest.lstrip('openEuler-')
     # if this new version doesn't exist on dockerhub
     if not get_date(tag=new_version.lower(), tag_list=hubtags):
-        click.echo(
-            click.style(
-                f"Publishing new version {new_version} ...",
-                fg="blue"
-            )
-        )
+        logger.info(f"Publishing new version {new_version} ...")
         # run eulerpublisher to publish new version
         if subprocess.call([
             "eulerpublisher", "container", "base", "publish",
@@ -150,9 +133,7 @@ def publish_new(hubtags=[]):
         ]) != 0:
             return 1
     else:
-        click.echo(
-            click.style(f"No new version.", fg="green")
-        )
+        logger.info(f"No new version.")
     return 0
 
 

@@ -13,12 +13,11 @@ pip install eulerpublisher
 ```
 
 ## 环境依赖
-1.EulerPublisher实现多平台容器镜像构建功能依赖于docker和qemu，实现镜像分析与瘦身依赖于slim，安装方式如下：
+1.EulerPublisher实现多平台容器镜像构建功能依赖于docker和qemu，安装方式如下：
 
 ```
 yum install qemu-img
 yum install docker
-curl -sL https://raw.githubusercontent.com/slimtoolkit/slim/master/scripts/install-slim.sh | sudo -E bash -
 ```
 多平台镜像构建使用`docker buildx`，安装的docker版本需满足`>= 19.03`或单独安装`buildx`插件，单独安装`docker buildx`方法如下：
 
@@ -195,16 +194,35 @@ eulerpublisher container app check -n {APP_NAME} -s {SCRIPT.sh} -t {APP_TAG}
 ```
 应用容器镜像的测试用例默认保存在`tests/container/app/{APP_NAME}_test.sh`，用户可根据自身需求使用`-s`指定测试用例脚本。
 
-#### Distroless容器镜像
+#### Distroless镜像
+openEuler distroless镜像是安装指定的应用软件列表，满足在特定场景下程序运行的软件集合。不安装无用软件和文件，如包管理器yum、命令行工具bash等一些程序运行无关的工具。
 
-openEuler Distroless容器镜像是安装指定的应用软件列表，满足在特定场景下程序运行的软件集合。不安装无用软件和文件，如包管理器yum、命令行工具bash等一些程序运行无关的工具。
-```
-# distroless容器镜像发布
-eulerpublisher container distroless publish -a aarch64 -p openeuler/distroless -f Dockerfile -n base -version 22.03-LTS glibc filesystem ...
-```
-需要安装的软件列表放在命令结尾处，空格隔开即可。
+EulerPublisher通过与[splitter](https://gitee.com/openeuler/splitter)集成，使用openEuler软件包切分后的slice作为构建应用镜像的基础材料来生成openEuler distroless镜像。
 
-#### 测试框架
+```
+# distroless镜像发布
+eulerpublisher container distroless publish -p openeuler/distroless-hello -t latest -f Distrofile
+```
+其中`-a`,`-t`和`-p`作用与上文中表述一致，`-f`用于指定构建openEuler distroless镜像的配置文件，作用类似于Dockerfile。其中`Distrofile格式如下：
+```
+# Distrofile
+name: distroless-hello                        # 镜像名称
+summary: summary for `hello` image            # 镜像描述
+base: scratch                                 # 基础镜像
+release: 24.03-LTS                            # openEuler版本
+platforms:                                    # 镜像架构
+  - linux/amd64                               # 与docker buildx --platform的可选参数保持一致
+  - linux/arm64
+
+parts:                                        # 构建镜像所需的slice
+  - slice1
+  - slice2
+  ...
+```
+
+**注意**：`Distrofile`在构建distroless镜像时为必须提供。
+
+#### 容器镜像测试
 EulerPublisher使用[shUnit2](https://github.com/kward/shunit2)测试框架。本项目每个应用容器镜像通过一个shell脚本进行测试，默认保存在`tests/container/app/`目录，测试脚本命名为`{APP_NAME}_test.sh`。每个测试脚本的关键内容如下：
 ```
 每个测试脚本中，所有的测试用例以函数粒度构造，且函数名以“test”开头，如，testEquality()
@@ -217,59 +235,7 @@ EulerPublisher使用[shUnit2](https://github.com/kward/shunit2)测试框架。�
 
 欢迎广大开发者贡献测试用例！
 
-### 3. 镜像分析与优化
-#### Dockerfile静态分析
-
-本部分介绍如何使用EulerPublisher对Dockerfile执行静态分析。`lint` 命令会分析你的 Dockerfile，对 Dockerfile 中的指令进行检查。此命令会提供警告，并检查错误，同时为你提供 Dockerfile 中指令的相关信息。它会检查缺失的文件、无效的指令或命令，以及 Dockerfile 中不必要的或难以管理的层。同时，`lint` 命令还会检查 .dockerignore 文件，确保在构建镜像时正确排除不必要的文件和目录。
-
-```
-eulerpublisher container lint -r {REPORTPATH} -t {DOCKERFILEPATH}
-```
-   `REPORTPATH`为Dockerfile静态分析生成报告的路径，默认在当前目录生成`lint.report.json`。`DOCKERFILEPATH`为需要分析的Dockerfile文件路径。使用示例如下
-```
-eulerpublisher container lint -r ./report/lint.report.json -t Dockerfile 
-```
-#### 镜像静态分析
-
-本部分介绍如何使用EulerPublisher对目标容器镜像执行静态分析（包括对镜像的 Dockerfile 进行“逆向工程”）。`analyze` 命令主要用于静态分析 Docker 镜像。它会深入探索 Docker 镜像的各层、使用的命令、文件、库、可执行文件以及当 Docker 镜像构建时将在工作环境中产生的变更。这个命令能够帮助逆向工程出 Dockerfile，即从目标 Docker 镜像反推出 Dockerfile。同时，`analyze` 也会提供对象文件的大小信息，以及容器空间中可能存在的浪费情况。
-
-```
-eulerpublisher container analyze -r {REPORTPATH} -i {IMAGEID}
-```
-   `REPORTPATH`为镜像静态分析生成报告的路径，默认在当前目录生成`analyze.report.json`。`IMAGEID`为本地镜像的`image id`或`repository:tag`，当`IMAGEID`不存在时会直接从dockerhub拉取，因此有出现镜像不存在而无法分析的错误。使用示例如下
-```
-eulerpublisher container analyze -i nginx:latest
-```
-
-  可以通过终端打印的`artifacts.location`获取逆向Dockerfile路径。默认路径为'/tmp/slim-state/.slim-state/images/{IMAGEID}/artifacts' ，IMAGEID为镜像ID的完整十六进制 SHA-256 哈希值，可通过```docker ps -a --no-trunc```查看。示例路径如下
-
-```
-cmd=xray info=results '/tmp/slim-state/.slim-state/images/605c77e624ddb75e6110f997c58876baa13f8754486b461117934b24a9dc3a85/artifacts' 
-```
-#### 镜像动态分析
-
-本部分介绍如何使用EulerPublisher对目标容器镜像执行动态分析（包括对镜像的 Dockerfile 进行“逆向工程”）。`profile` 命令进行更为深入的动态分析。它不仅分析 Docker 镜像，还会运行该镜像并创建一个容器，然后对这个容器进行分析和探测。这意味着 `profile` 命令会在实际运行环境中收集数据，从而获得比 `analyze` 更多的信息。此外，`profile` 命令还默认提供了高级的 HTTP 探针功能，可以检查 Docker 容器的可达性和响应情况。与`analyze`命令一样，`profile`也会为镜像生成逆向Dockerfile。
-
-```
-eulerpublisher container profile -r {REPORTPATH} -i {IMAGEID}
-```
-   `REPORTPATH`为镜像动态分析生成报告的路径，默认在当前目录生成`profile.report.json`。`IMAGEID`为本地镜像的`image id`或`repository:tag`，当`IMAGEID`不存在时会直接从dockerhub拉取，因此有出现镜像不存在而无法分析的错误。使用示例如下
-```
-eulerpublisher container profile -r nginx.profile.report.json -i nginx:latest
-```
-#### 镜像优化
-
-本部分介绍如何使用EulerPublisher分析目标容器镜像及其应用程序，并从中构建优化的镜像。`slim` 命令会分析 Docker 镜像，移除不需要的层、文件和依赖项，从而显著减小镜像的大小，提高加载和部署速度，节省存储空间和网络传输时间，加强镜像安全性。
-
-```
-eulerpublisher container slim -r {REPORTPATH} -i {IMAGEID} -t {repository:tag} -p {TRUE/FALSE}
-```
-   `REPORTPATH`为镜像优化生成报告的路径，默认在当前目录生成`slim.report.json`。`IMAGEID`为本地镜像的`image id`或`repository:tag`，当`IMAGEID`不存在时会直接从dockerhub拉取，因此有出现镜像不存在而无法分析的错误。`repository:tag`为优化后镜像的名称。`-p`指示是否开启http探测，目标镜像并未暴露端口时（如hello-world应用），请关闭此选项。使用示例如下
-```
-eulerpublisher container slim -r nginx.slim.report.json -i d2c94e258dcb -t nginx.slim:latest -p true
-```
-
-### 4. 使用EUR构建RPM软件包
+### 3. 使用EUR构建RPM软件包
 openEuler社区基础设施提供的[EUR(openEuler User Repo)](https://eur.openeuler.openatom.cn/)针对开发者推出的个人软件包托管平台，目的在于为开发者提供一个易用的软件包分发平台。
 EulerPublisher通过调用EUR API，实现自动构建RPM的能力。
 

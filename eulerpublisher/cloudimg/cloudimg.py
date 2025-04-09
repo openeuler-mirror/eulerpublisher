@@ -6,7 +6,7 @@ import platform
 import wget
 
 import eulerpublisher.publisher.publisher as pb
-from eulerpublisher.publisher import EP_PATH
+from eulerpublisher.publisher import EP_PATH, logger
 from eulerpublisher.publisher import OPENEULER_REPO
 from eulerpublisher.cloudimg.vendor.huawei import push_huawei
 from eulerpublisher.cloudimg.vendor.tencent import push_tencent
@@ -66,20 +66,20 @@ class CloudimgPublisher(pb.Publisher):
                     + xz_file
                 )
                 try:
-                    click.echo("\n[Prepare] Downloading '%s'..." % xz_file)
+                    logger.info("[Prepare] Downloading '%s'..." % xz_file)
                     wget.download(url)
                 except Exception as err:
-                    raise click.ClickException("\n[Prepare] " + str(err))
+                    raise err
             if subprocess.call(["unxz", "-f", xz_file]):
-                click.echo(click.style("\n[Prepare] Failed to unxz '%s'." % xz_file, fg="red"))
+                logger.error("[Prepare] Failed to unxz '%s'." % xz_file)
                 return pb.PUBLISH_FAILED
-        click.echo(click.style("\n[Prepare] Finished.", fg="green"))
+        logger.info("[Prepare] Finished.")
         return pb.PUBLISH_SUCCESS
 
     def build(self):
         qcow2_file = "openEuler-" + self.version + "-" + self.arch + ".qcow2"
         if not os.path.exists(DATA_PATH + qcow2_file):
-            click.echo(click.style("\n[Build] Failed to find original image '%s'." % qcow2_file, fg="red"))
+            logger.error("[Build] Failed to find original image '%s'." % qcow2_file)
             return pb.PUBLISH_FAILED
 
         build_scripts = {
@@ -92,14 +92,14 @@ class CloudimgPublisher(pb.Publisher):
         script = SCRIPT_PATH + build_scripts[self.target]
         args = [qcow2_file, DATA_PATH, CLOUD_INIT_CONFIG, self.rpmlist]
         if subprocess.call(["sudo", "sh", script] + args):
-            click.echo(click.style("\n[Build] Failed to build cloud image.", fg="red"))
+            logger.error("[Build] Failed to build cloud image.")
             return pb.PUBLISH_FAILED
-        click.echo(click.style("\n[Build] Finished.", fg="green"))
+        logger.info("[Build] Finished.")
         return pb.PUBLISH_SUCCESS
 
     def push(self):
         if not os.path.exists(DATA_PATH + "output/" + self.image):
-            click.echo(click.style("\n[Push] Failed to find cloud image '%s'." % self.image, fg="red"))
+            logger.error("[Push] Failed to find cloud image '%s'." % self.image)
             return pb.PUBLISH_FAILED
         
         push_functions = {
@@ -111,8 +111,8 @@ class CloudimgPublisher(pb.Publisher):
         if self.target in push_functions:
             push_functions[self.target](self.arch, self.version, self.bucket, self.region, self.image)
         else:
-            click.echo(click.style("\n[Push] Unsupported cloud provider.", fg="red"))
+            logger.error("[Push] Unsupported cloud provider.")
             return pb.PUBLISH_FAILED
 
-        click.echo(click.style("\n[Push] Finished.", fg="green"))
+        logger.info("[Push] Finished.")
         return pb.PUBLISH_SUCCESS

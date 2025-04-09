@@ -31,10 +31,6 @@ sudo rm -rf /usr/local/bin/coscli  \
             /usr/local/bin/aws     \
             /usr/local/bin/aws_completer
 
-# 卸载slim
-sudo rm -rf /usr/local/bin/slim \
-            /usr/local/bin/slim-sensor
-
 # 卸载shUnit2
 sudo rm -rf /usr/share/shunit2
 

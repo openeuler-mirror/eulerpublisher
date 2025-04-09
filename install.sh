@@ -35,11 +35,6 @@ if [[ ! $(which docker) ]]; then
     curl -sL https://raw.githubusercontent.com/cnrancher/euler-packer/refs/heads/main/scripts/others/install-docker.sh | sudo -E bash - 
 fi
 
-# 安装slim
-if [[ ! $(which slim) ]]; then
-    curl -sL https://raw.githubusercontent.com/slimtoolkit/slim/master/scripts/install-slim.sh | sudo -E bash -
-fi
-
 # 安装公有云厂商命令行工具
 if [[ ! $(which aws) ]]; then
     wget https://awscli.amazonaws.com/awscli-exe-linux-${AWSCLI_ARCH}.zip -O awsutil.zip

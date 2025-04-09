@@ -5,6 +5,7 @@ import warnings
 
 
 import eulerpublisher.publisher.publisher as pb
+from eulerpublisher.publisher import logger
 from eulerpublisher.container.app.app import AppPublisher
 
 
@@ -70,7 +71,7 @@ def group():
 )
 def build(repo, registry, arch, dockerfile, tag, mpublish):
     if mpublish:
-        click.echo("`-g, --registry` option will not be used "
+        pb.log("`-g, --registry` option will not be used "
             "while `-m, --mpublish` is set.")
     obj = AppPublisher(
         repo=repo,
@@ -126,7 +127,7 @@ def build(repo, registry, arch, dockerfile, tag, mpublish):
 )
 def push(repo, registry, tag, mpublish):
     if mpublish:
-        click.echo("`-g, --registry` option will not be used "
+        logger.warning("`-g, --registry` option will not be used "
             "while `-m, --mpublish` is set.")
     obj = AppPublisher(
         repo=repo,
@@ -246,7 +247,7 @@ def check(name, hubnamespace, script, tag):
 )
 def publish(arch, repo, registry, dockerfile, tag, latest, mpublish, source):
     if mpublish:
-        click.echo("`-g, --registry` option will not be used "
+        logger.warning("`-g, --registry` option will not be used "
             "while `-m, --mpublish` is set.")
     obj = AppPublisher(
         arch=arch,
