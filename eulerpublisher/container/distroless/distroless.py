@@ -7,7 +7,6 @@ import eulerpublisher.publisher.publisher as pb
 from eulerpublisher.publisher import EP_PATH
 from eulerpublisher.publisher import logger
 
-
 DISTROLESS_CACHE_PATH = "/tmp/eulerpublisher/container/distroless"
 DEFAULT_REGISTRY = EP_PATH + "config/container/distroless/registry.yaml"
 DOCKERFILE_PATH = EP_PATH + "config/container/distroless/Dockerfile"
@@ -15,9 +14,9 @@ TESTCASE_PATH = EP_PATH + "tests/container/app/"
 TESTCASE_SUFFIX = "_test.sh"
 
 
-def parse_build_yaml(configfile: str):
+def parse_build_yaml(distrofile: str):
     try:
-        with open(configfile, "r") as f:
+        with open(distrofile, "r") as f:
             params = yaml.safe_load(f)
         base = params.get("base", "")
         parts = ' '.join(params.get("parts", ""))
@@ -25,13 +24,14 @@ def parse_build_yaml(configfile: str):
         # "linux/amd64,linux/arm64"
         arches = params.get("platforms", "")
     except FileNotFoundError:
-            logger.error(f"The file '{configfile}' was not found.")
+        logger.error(f"The file '{distrofile}' was not found.")
     except yaml.YAMLError as e:
-        logger.error(f"Failed to read '{configfile}' as yaml: {e}")
+        logger.error(f"Failed to read '{distrofile}' as yaml: {e}")
     except Exception as e:
         logger.error(f"An unexpected error occurred: {e}")
-    
+
     return base, parts, arches, release
+
 
 # tag image for all registries
 def init_tags(registry, repo, tag: str, multi):
@@ -49,6 +49,7 @@ def init_tags(registry, repo, tag: str, multi):
         tags_bulid += " "
     return tags_bulid
 
+
 def get_multi_file(multi):
     if multi:
         # if EP_LOGIN_FILE exists or valuable
@@ -58,6 +59,7 @@ def get_multi_file(multi):
             return os.path.abspath(os.environ["EP_LOGIN_FILE"])
     else:
         return ""
+
 
 def run_build_command(command, workdir=DISTROLESS_CACHE_PATH, dockerfile=DOCKERFILE_PATH):
     try:
@@ -89,19 +91,27 @@ class DistrolessPublisher(pb.Publisher):
     def __init__(self,
                  repo="",
                  registry="",
-                 configfile="",
+                 distrofile="",
                  tag="",
                  multi=False
-        ):
+                 ):
         self.repo = repo
         self.registry = registry
         self.multi_file = get_multi_file(multi)
-        self.workdir = DISTROLESS_CACHE_PATH
+
+        # work on directory of `Distrofile`
+        if (not "EP_DISTROLESS_WORKDIR" in os.environ) or (not os.environ["EP_DISTROLESS_WORKDIR"]):
+            self.workdir = os.path.dirname(os.path.abspath(distrofile))
+        else:
+            self.workdir = os.path.abspath(os.environ["EP_DISTROLESS_WORKDIR"])
+
+        # get all tags for this image
         self.tags_build = init_tags(
             registry=registry, repo=repo, tag=tag, multi=self.multi_file
         )
-        self.base, self.parts, self.arches, self.release = parse_build_yaml(os.path.abspath(configfile))
 
+        # parse building params from `Distrofile`
+        self.base, self.parts, self.arches, self.release = parse_build_yaml(os.path.abspath(distrofile))
 
     def prepare(self):
         for arch in self.arches:
@@ -120,7 +130,7 @@ class DistrolessPublisher(pb.Publisher):
                 logger.error(f"Failed to generate required slices for {arch}")
                 return pb.PUBLISH_FAILED
         return pb.PUBLISH_SUCCESS
-    
+
     def build(self, op="load"):
         if (op == "load") and (len(self.arches) > 1):
             logger.warning(
@@ -137,7 +147,6 @@ class DistrolessPublisher(pb.Publisher):
             ','.join(self.arches), self.tags_build, build_args, op
         )
         return run_build_command(command, workdir=self.workdir)
-
 
     def build_and_push(self):
         try:
