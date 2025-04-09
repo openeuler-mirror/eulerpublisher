@@ -73,7 +73,8 @@ FILE_PATH_FORMAT = {
     "meta": "{0}/meta.yml",
     "doc": "{0}/doc",
     "image-info": "{0}/doc/image-info.yml",
-    "Dockerfile": "{0}/{1}/{2}/Dockerfile"
+    "Dockerfile": "{0}/{1}/{2}/Dockerfile",
+    "build.yml": "{0}/{1}/{2}/build.yml"
 }
 
 
@@ -205,18 +206,20 @@ def parse_image_directory(file: str):
 
 def _parse_info_default(file: str, image_dir: str):
     """
-    Parse application information from the Dockerfile path.
+    Parse application information from the `Dockerfile` or `build.yml` path.
 
     `{app-version}/{os-version}/Dockerfile`
+    `{app-version}/{os-version}/build.yml`
     """
-    # Validate the Dockerfile path structure.
+    # Validate the `Dockerfile` or `build.yml` path structure.
     image_dir = image_dir.rstrip("/") + "/"
     context_path = file.replace(image_dir, "")
     if len(context_path.split("/")) != DOCKERFILE_PATH_DEPTH:
         raise Exception(
             f"Failed to check file path: {file}, "
-            "the correct Dockerfile path should be "
-            "{image-version}/{os-version}/Dockerfile`"
+            "the correct `Dockerfile` or `build.yml` path should be "
+            "{image-version}/{os-version}/Dockerfile or "
+            "{image-version}/{os-version}/build.yml"
         )
 
     # Extract base OS version, app version, and app name.
@@ -283,7 +286,7 @@ def _push_readme(file: str, namespace: str, image: str):
             env={**os.environ, 'APIKEY__QUAY_IO': os.environ["DOCKER_QUAY_APIKEY"]}
         )
     except subprocess.CalledProcessError as err:
-        logger.error(f"{err}", fg="red"))
+        logger.error(f"{err}")
 
 
 def _check_document(self):
@@ -371,7 +374,7 @@ def _check_file_path(self):
         if name not in FILE_PATH_FORMAT:
             continue
         # Dockerfile does not need to be checked.
-        if name == "Dockerfile":
+        if name == "Dockerfile" or name == "build.yml":
             continue
 
         # check file under image directory
