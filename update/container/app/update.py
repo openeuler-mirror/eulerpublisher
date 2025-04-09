@@ -74,7 +74,7 @@ FILE_PATH_FORMAT = {
     "doc": "{0}/doc",
     "image-info": "{0}/doc/image-info.yml",
     "Dockerfile": "{0}/{1}/{2}/Dockerfile",
-    "build.yml": "{0}/{1}/{2}/build.yml"
+    "build": "{0}/{1}/{2}/build.yml"
 }
 
 
