@@ -201,11 +201,11 @@ EulerPublisher通过与[splitter](https://gitee.com/openeuler/splitter)集成，
 
 ```
 # distroless镜像发布
-eulerpublisher container distroless publish -p openeuler/distroless-hello -t latest -f build.yml
+eulerpublisher container distroless publish -p openeuler/distroless-hello -t latest -f Distrofile
 ```
-其中`-a`,`-t`和`-p`作用与上文中表述一致，`-f`用于指定构建openEuler distroless镜像的配置文件，作用类似于Dockerfile。其中`build.yml`格式如下：
+其中`-a`,`-t`和`-p`作用与上文中表述一致，`-f`用于指定构建openEuler distroless镜像的配置文件，作用类似于Dockerfile。其中`Distrofile格式如下：
 ```
-# build.yml
+# Distrofile
 name: distroless-hello                        # 镜像名称
 summary: summary for `hello` image            # 镜像描述
 base: scratch                                 # 基础镜像
@@ -220,7 +220,7 @@ parts:                                        # 构建镜像所需的slice
   ...
 ```
 
-**注意**：`build.yml`在构建distroless镜像时为必须提供。
+**注意**：`Distrofile`在构建distroless镜像时为必须提供。
 
 #### 容器镜像测试
 EulerPublisher使用[shUnit2](https://github.com/kward/shunit2)测试框架。本项目每个应用容器镜像通过一个shell脚本进行测试，默认保存在`tests/container/app/`目录，测试脚本命名为`{APP_NAME}_test.sh`。每个测试脚本的关键内容如下：

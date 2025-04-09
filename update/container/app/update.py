@@ -74,7 +74,7 @@ FILE_PATH_FORMAT = {
     "doc": "{0}/doc",
     "image-info": "{0}/doc/image-info.yml",
     "Dockerfile": "{0}/{1}/{2}/Dockerfile",
-    "build": "{0}/{1}/{2}/build.yml"
+    "Distrofile": "{0}/{1}/{2}/Distrofile"
 }
 
 
@@ -206,20 +206,20 @@ def parse_image_directory(file: str):
 
 def _parse_info_default(file: str, image_dir: str):
     """
-    Parse application information from the `Dockerfile` or `build.yml` path.
+    Parse application information from the `Dockerfile` or `Distrofile` path.
 
     `{app-version}/{os-version}/Dockerfile`
-    `{app-version}/{os-version}/build.yml`
+    `{app-version}/{os-version}/Distrofile`
     """
-    # Validate the `Dockerfile` or `build.yml` path structure.
+    # Validate the `Dockerfile` or `Distrofile` path structure.
     image_dir = image_dir.rstrip("/") + "/"
     context_path = file.replace(image_dir, "")
     if len(context_path.split("/")) != DOCKERFILE_PATH_DEPTH:
         raise Exception(
             f"Failed to check file path: {file}, "
-            "the correct `Dockerfile` or `build.yml` path should be "
+            "the correct `Dockerfile` or `Distrofile` path should be "
             "{image-version}/{os-version}/Dockerfile or "
-            "{image-version}/{os-version}/build.yml"
+            "{image-version}/{os-version}/Distrofile"
         )
 
     # Extract base OS version, app version, and app name.
@@ -373,15 +373,15 @@ def _check_file_path(self):
         name = contents[-1].split(".")[0]
         if name not in FILE_PATH_FORMAT:
             continue
-        # Dockerfile does not need to be checked.
-        if name == "Dockerfile" or name == "build.yml":
+        # Dockerfile or Distrofile does not need to be checked.
+        if name == "Dockerfile" or name == "Distrofile":
             continue
 
         # check file under image directory
         image_dir = parse_image_directory(file)
         if not file.startswith(image_dir):
             continue
-
+        # check all files exclude Dockerfile and Distrofile
         file_path = FILE_PATH_FORMAT[name].format(
             image_dir, contents[-1]
         )
@@ -597,7 +597,7 @@ class ContainerVerification:
             if os.path.basename(file) == "Dockerfile":
                 if _check_app_image(file=file) != 0:
                     return 1
-            elif os.path.basename(file) == "build.yml":
+            elif os.path.basename(file) == "Distrofile":
                 if _check_distroless_image(file=file) != 0:
                     return 1
             else:
@@ -658,7 +658,7 @@ class ContainerVerification:
                 failed = _publish_app_image(file=file, image_dir=image_dir)
                 if failed:
                     failed_tags.append(failed)
-            elif os.path.basename(file) == "build.yml":
+            elif os.path.basename(file) == "Distrofile":
                 failed = _publish_distroless_image(file=file, image_dir=image_dir)
                 if failed:
                     failed_tags.append(failed)

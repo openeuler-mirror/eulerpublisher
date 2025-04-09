@@ -27,7 +27,7 @@ def group():
     "-f",
     "--configfile",
     required=True,
-    help="The configuration file named `build.yml` to define how to build your distroless images. "
+    help="The configuration file named `Distrofile` to define how to build your distroless images. "
 )
 @click.option(
     "-t",
@@ -67,7 +67,7 @@ def build(repo, configfile, tag):
     "-f",
     "--configfile",
     required=True,
-    help="The configuration file named `build.yml` to define how to build your distroless images. "
+    help="The configuration file named `Distrofile` to define how to build your distroless images. "
 )
 @click.option(
     "-t",
