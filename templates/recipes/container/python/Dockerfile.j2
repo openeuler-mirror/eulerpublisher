@@ -49,8 +49,18 @@ FROM ${BASE} AS official
 
 ARG VERSION
 
-COPY --from=builder /usr/local/python* /usr/local/
+COPY --from=builder /usr/local/python* /usr/local/python
 
 RUN VERSION_SHORT=$(echo "${VERSION}" | cut -d. -f1,2) && \
-    echo "export PATH=/usr/local/python${VERSION_SHORT}/bin:${PATH}" >> /etc/profile && \
-    echo "export PATH=/usr/local/python${VERSION_SHORT}/bin:${PATH}" >> ~/.bashrc
+    VERSION_MAJOR=$(echo "${VERSION}" | cut -d. -f1,2,3) && \
+    PY_HOME=/usr/local/python${VERSION_SHORT} && \
+    mv /usr/local/python ${PY_HOME} && \
+    ln -sf ${PY_HOME}/bin/python${VERSION_SHORT} /usr/bin/python${VERSION_SHORT} && \
+    ln -sf ${PY_HOME}/bin/pip${VERSION_SHORT} /usr/bin/pip${VERSION_SHORT} && \
+    ln -sf /usr/bin/python${VERSION_SHORT} /usr/bin/python${VERSION_MAJOR} && \
+    ln -sf /usr/bin/pip${VERSION_SHORT} /usr/bin/pip${VERSION_MAJOR} && \
+    ln -sf /usr/bin/python${VERSION_MAJOR} /usr/bin/python && \
+    ln -sf /usr/bin/pip${VERSION_MAJOR} /usr/bin/pip
+
+RUN echo "export PATH=/usr/local/python/bin:${PATH}" >> /etc/profile && \
+    echo "export PATH=/usr/local/python/bin:${PATH}" >> ~/.bashrc

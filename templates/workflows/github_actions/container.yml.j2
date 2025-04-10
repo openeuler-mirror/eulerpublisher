@@ -4,7 +4,7 @@
     needs: 
       - push-{{ needs }}
     {% endif %}
-    runs-on: ubuntu-24.04{% if arch == 'aarch64' %}-arm{% endif %}
+    runs-on: {{ runner }}{% if arch == 'aarch64' %}-arm{% endif %}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
