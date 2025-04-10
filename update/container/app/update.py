@@ -511,7 +511,6 @@ def _publish_app_image(file: str, image_dir: str):
         "-p", f"{OFFICIAL_NAMESPACE}/{name}",
         "-t", tag['tag'],
         "-l", tag['latest'],
-        "-s", f"{TEST_NAMESPACE}/{name}:{tag['tag']}",
         "-f", file,
         "-m"
     ]) != 0:
