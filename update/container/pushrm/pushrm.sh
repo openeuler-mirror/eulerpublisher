@@ -24,7 +24,7 @@ if [ ! -f $HOME/.docker/cli-plugins/docker-pushrm ]; then
         curl -fSL -o $HOME/.docker/cli-plugins/docker-pushrm https://github.com/christian-korneck/docker-pushrm/releases/download/v1.9.0/docker-pushrm_${sys}_arm64
     fi
     sudo chmod +x $HOME/.docker/cli-plugins/docker-pushrm
-fi 
+fi
 
 # push readme to all registries.
 for registry in ${registries}; do
@@ -33,6 +33,6 @@ for registry in ${registries}; do
         para="-p harbor2"
     fi
     docker login ${registry}
-    docker pushrm ${para} -f ${file} ${registry}/${namespace}/${repo}
+    docker pushrm ${para} -f ${file} ${registry}/${namespace}/${repo} || { echo "Failed to push to ${registry}/${namespace}/${repo}"; continue; }
     echo "Succeed to push README to" ${registry}/${namespace}/${repo}
 done
