@@ -317,7 +317,7 @@ def _filter_doc_images(image_dir: str):
         return False
     info_path = FILE_PATH_FORMAT["image-info"].format(image_dir)
     if not os.path.exists(info_path):
-        return True
+        return False
     with open(info_path, "r") as f:
         image_info = yaml.safe_load(f)
     if "show-on-appstore" not in image_info:
