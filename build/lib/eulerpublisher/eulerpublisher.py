@@ -24,7 +24,7 @@ def main():
         orchestrator.join()
         # monitor.join()
         tracker.join()
-        ui.start()
+        ui.join()
     except KeyboardInterrupt:
         orchestrator.terminate()
         # monitor.terminate()
