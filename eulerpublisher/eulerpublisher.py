@@ -15,15 +15,15 @@ def main():
     tracker = Tracker(config=config, logger=logger, db=db)
 
     orchestrator.start()
-    # monitor.start()
+    monitor.start()
     tracker.start()
  
     try:
         orchestrator.join()
-        # monitor.join()
+        monitor.join()
         tracker.join()
     except KeyboardInterrupt:
         orchestrator.terminate()
-        # monitor.terminate()
+        monitor.terminate()
         tracker.terminate()
         

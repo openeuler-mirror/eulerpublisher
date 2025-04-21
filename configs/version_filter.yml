@@ -1,0 +1,11 @@
+openeuler:
+  regex: '\.LTS$'
+  description: "Filter versions that end with '.LTS' and do not contain 'SP' or '64' after it."
+
+python:
+  regex: '^(\d+\.\d+)\.\d+$'
+  description: "Filter versions that match the pattern 'X.Y.Z' where X and Y are digits."
+
+cann:
+  regex: 'beta'
+  description: "Filter versions that contain the word 'beta'."
