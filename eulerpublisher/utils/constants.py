@@ -45,7 +45,7 @@ ARTIFACT_TYPES = {
 
 ARCHS = ["x86_64", "aarch64"]
 REGISTRIES = ["docker.io", "quay.io"]
-REPOSITORY = ["openeuler"]
+REPOSITORY = "openeuler"
 FILTER_CONFIG_ = os.path.join(CONFIG_DIR, "version_rules.yaml")
 
 UPSTREAM_MONITOR_URL = "https://easysoftware-monitoring.test.osinfra.cn/api/v2/projects/"

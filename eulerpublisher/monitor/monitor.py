@@ -1,9 +1,10 @@
-import time
 import requests
+import time
 import pika
 import json
 import datetime
 import schedule
+from zoneinfo import ZoneInfo
 from multiprocessing import Process
 from eulerpublisher.utils.constants import UPSTREAM_MONITOR_URL
 from eulerpublisher.utils.constants import ARCHS, REGISTRIES, REPOSITORY
@@ -42,7 +43,7 @@ class Monitor(Process):
                 self.db.insert_version(software_name, version)
 
     def request_build(self, layers):
-        timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = datetime.datetime.now(ZoneInfo('Asia/Shanghai')).strftime("%Y-%m-%d %H:%M:%S")
         build_request = {
             "trigger": {
                 "type": "auto",
