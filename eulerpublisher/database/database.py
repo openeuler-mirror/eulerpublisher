@@ -12,7 +12,6 @@ class Database:
         self.config = config
         self.logger = logger
         self._create_table()
-        self._init_database()
         self.logger.info(f"Database initialized")
 
     def _create_table(self):
@@ -59,7 +58,8 @@ class Database:
                 CREATE TABLE IF NOT EXISTS dependency_data (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     software_id INTEGER NOT NULL,
-                    dependency_id INTEGER NOT NULL
+                    dependency_id INTEGER NOT NULL,
+                    UNIQUE (software_id, dependency_id)
                 )
                 ''')
                 conn.commit()
@@ -67,44 +67,6 @@ class Database:
             self.logger.error(f"Error creating tables: {e}")
             raise DatabaseError(f"Error creating tables: {e}")
 
-    def _init_database(self):
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute('BEGIN TRANSACTION')
-                cursor.execute('''
-                INSERT OR IGNORE INTO software_data (software_name)
-                VALUES
-                    ('openeuler'),
-                    ('python'),
-                    ('cann'),
-                    ('pytorch')
-                ''')
-                
-                cursor.execute("SELECT id FROM software_data WHERE software_name = 'openeuler'")
-                openeuler_id = cursor.fetchone()[0]
-                cursor.execute("SELECT id FROM software_data WHERE software_name = 'python'")
-                python_id = cursor.fetchone()[0]
-                cursor.execute("SELECT id FROM software_data WHERE software_name = 'cann'")
-                cann_id = cursor.fetchone()[0]
-                cursor.execute("SELECT id FROM software_data WHERE software_name = 'pytorch'")
-                pytorch_id = cursor.fetchone()[0]
-                
-                cursor.execute('''
-                INSERT OR IGNORE INTO dependency_data (software_id, dependency_id)
-                VALUES
-                    (?, ?),
-                    (?, ?),
-                    (?, ?)
-                ''', (python_id, openeuler_id,
-                      cann_id, python_id, 
-                      pytorch_id, cann_id))
-                conn.commit()
-                
-        except sqlite3.Error as e:
-            self.logger.error(f"Error initializing database: {e}")
-            raise DatabaseError(f"Error initializing database: {e}")
-        
     def insert_software(self, software_name):
         try:
             with sqlite3.connect(self.db_path) as conn:
