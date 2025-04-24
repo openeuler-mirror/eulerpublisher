@@ -16,7 +16,7 @@ class Monitor(Process):
         self.config = config
         self.db = db
         self.logger.info("Monitor initialized")
-        self.init_existing_software()
+        self._init_existing_software()
 
     def fetch_versions(self, software_name):
         url = f"{UPSTREAM_MONITOR_URL}?name={software_name}"
@@ -33,7 +33,7 @@ class Monitor(Process):
             self.logger.error(f"Failed to fetch data for project {software_name}: {e}")
             return None
         
-    def init_existing_software(self):
+    def _init_existing_software(self):
         software_names = self.db.query_softwares()
         for software_name in software_names:
             versions = self.fetch_versions(software_name)[::-1]
