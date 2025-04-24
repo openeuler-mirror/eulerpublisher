@@ -152,7 +152,7 @@ class Database:
             self.logger.error(f"Error querying software: {e}")
             raise DatabaseError(f"Error querying software: {e}")
 
-    def query_all_software(self):
+    def query_softwares(self):
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -222,6 +222,23 @@ class Database:
             self.logger.error(f"Error querying version: {e}")
             raise DatabaseError(f"Error querying version: {e}")
 
+    def query_versions(self, software_name):
+        try:
+            software_id = self.query_software(software_name)
+            if software_id is None:
+                self.logger.error(f"Software {software_name} not found")
+                raise DatabaseError(f"Software {software_name} not found")
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                SELECT version FROM version_data WHERE software_id = ?
+                ''', (software_id,))
+                results = cursor.fetchall()
+                return [result[0] for result in results]
+        except sqlite3.Error as e:
+            self.logger.error(f"Error querying versions: {e}")
+            raise DatabaseError(f"Error querying versions: {e}")
+
     def insert_image(self, software_name, version, arch, registry, repository, tag):
         try:
             software_id = self.query_software(software_name)
@@ -281,3 +298,22 @@ class Database:
         except sqlite3.Error as e:
             self.logger.error(f"Error deleting image: {e}")
             raise DatabaseError(f"Error deleting image: {e}")
+        
+    def query_dependency(self, software_name):
+        try:
+            software_id = self.query_software(software_name)
+            if software_id is None:
+                self.logger.error(f"Software {software_name} not found")
+                raise DatabaseError(f"Software {software_name} not found")
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                SELECT s.software_name FROM dependency_data d
+                JOIN software_data s ON d.dependency_id = s.id
+                WHERE d.software_id = ?
+                ''', (software_id,))
+                result = cursor.fetchone()
+                return result[0] if result else None
+        except sqlite3.Error as e:
+            self.logger.error(f"Error querying dependency: {e}")
+            raise DatabaseError(f"Error querying dependency: {e}")
