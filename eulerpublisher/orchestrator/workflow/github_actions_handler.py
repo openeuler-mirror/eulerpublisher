@@ -46,8 +46,6 @@ class GithubActionsHandler(WorkflowHandler):
         self.logger.info("Github Actions Handler initialized")
 
     def handle_workflow(self, artifact_type, artifact_info):
-        self.logger.info(f"Handling {artifact_type} workflow...")
-
         handle_functions = {
             ARTIFACT_TYPES[0]: self._handle_container_workflow,
             ARTIFACT_TYPES[1]: self._handle_rpm_workflow,
@@ -95,18 +93,17 @@ class GithubActionsHandler(WorkflowHandler):
             else:
                 tag = f"{version}-{tag}"
             
-            images = self.db.query_images(
+            image = self.db.query_image(
                             software_name=name, 
                             version_name=version, 
-                            arch=','.join(archs), 
                             repository=repository, 
                             tag=tag)
-            if len(images) == 0:
+            if not image or not set(archs).issubset(set(image["arch"].split(","))):
                 self.logger.info(f"Generating new workflow for {name}")
                 recipe_handler.handle_recipe(name, version, base)
-                self._handle_container_job(registries, repository, name, tag, needs, archs)
+                self._handle_container_job(registries, repository, name, version, tag, needs, archs)
                 needs = name
-                base = f"{repository}/{name}:{tag}"
+            base = f"{repository}/{name}:{tag}"
 
             # special handling for openeuler
             if name == "openeuler":
@@ -115,7 +112,7 @@ class GithubActionsHandler(WorkflowHandler):
             else:
                 tag = f"{name}{tag}"
 
-    def _handle_container_job(self, registries, repository, name, tag, needs, archs):
+    def _handle_container_job(self, registries, repository, name, version, tag, needs, archs):
         self.logger.info(f"Generating job for {name}...")
         template_path = os.path.join(GITHUB_ACTIONS_TEMPLATE_DIR, ARTIFACT_TYPES[0] + ".yml.j2")
         if not os.path.exists(template_path):
@@ -136,7 +133,8 @@ class GithubActionsHandler(WorkflowHandler):
                 "needs": needs,
                 "tag": tag,
                 "registries": registries,
-                "repository": repository
+                "repository": repository,
+                "version": version
             },
             mode="a",
         )

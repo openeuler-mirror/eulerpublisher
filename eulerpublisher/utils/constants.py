@@ -51,3 +51,5 @@ name: EulerPublisher 🚀
 on: [push]
 jobs:
 """
+
+GITHUB_ACTIONS_SUCCESS = "success"

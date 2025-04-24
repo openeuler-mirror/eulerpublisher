@@ -101,7 +101,7 @@ class UI(Process):
             # select openEuler
             gr.Markdown("<hr>")
             gr.Markdown("<h2 style='font-size: 24px;'>Step 1: openEuler版本</h2>")
-            versions = ["25.03", "24.03-LTS-SP1", "24.03-LTS", "22.03-LTS-SP4", "22.03-LTS"]
+            versions = ["25.03", "24.03.LTS.SP1", "24.03.LTS", "22.03.LTS.SP4", "22.03.LTS"]
             oe_version = gr.Dropdown(
                 label="openEuler 版本",
                 choices=versions,

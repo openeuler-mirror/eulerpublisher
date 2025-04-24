@@ -1,37 +1,27 @@
-  {% for arch in archs %}
-  build-{{ name }}-{{ arch }}:
+  build-{{ name }}:
+    strategy:
+      matrix:
+        include:
+          {% for arch in archs %}
+          - arch: {{ arch }}
+            runner: {{ runner }}{% if arch == 'aarch64' %}-arm{% endif %}
+          {% endfor %}
     {% if needs %}
     needs: 
       - push-{{ needs }}
     {% endif %}
-    runs-on: {{ runner }}{% if arch == 'aarch64' %}-arm{% endif %}
+    runs-on: {% raw %}${{ matrix.runner }}{% endraw %}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         
       {% for registry in registries %}
-        {% if registry == 'docker.io' %}
-      - name: Login to Docker Hub
+      - name: Login to {{ registry }}
         uses: docker/login-action@v3
         with:
-          registry: docker.io
-          username: {% raw %}${{ secrets.DOCKERHUB_USERNAME }}{% endraw %}
-          password: {% raw %}${{ secrets.DOCKERHUB_TOKEN }}{% endraw %}
-        {% elif registry == 'quay.io' %}
-      - name: Login to Quay.io
-        uses: docker/login-action@v3
-        with:
-          registry: quay.io
-          username: {% raw %}${{ secrets.QUAY_USERNAME }}{% endraw %}
-          password: {% raw %}${{ secrets.QUAY_TOKEN }}{% endraw %}
-        {% elif registry == 'hub.oepkgs.net' %}
-      - name: Login to OEPKGS
-        uses: docker/login-action@v3
-        with:
-          registry: hub.oepkgs.net
-          username: {% raw %}${{ secrets.OEPKGS_USERNAME }}{% endraw %}
-          password: {% raw %}${{ secrets.OEPKGS_TOKEN }}{% endraw %}
-        {% endif %}
+          registry: {{ registry }}
+          username: {% raw %}${{ secrets.{% endraw %}{{ registry | replace('.', '_') | upper }}{% raw %}_USERNAME }}{% endraw %}
+          password: {% raw %}${{ secrets.{% endraw %}{{ registry | replace('.', '_') | upper }}{% raw %}_TOKEN }}{% endraw %}
       {% endfor %}
 
       - name: Set up QEMU
@@ -44,7 +34,7 @@
         uses: docker/build-push-action@v6
         id: build
         with: 
-          platforms: {{ arch }}
+          platforms: {% raw %}${{ matrix.arch }}{% endraw %}
           tags: |
             {% for registry in registries %}
             {{ registry }}/{{ repository }}/{{ name }}
@@ -62,18 +52,15 @@
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-{{ name }}-{{ arch }}
+          name: digests-{{ name }}-{% raw %}${{ matrix.arch }}{% endraw %}
           path: {% raw %}${{ runner.temp }}{% endraw %}/digests/*
           if-no-files-found: error
           retention-days: 1
-  {% endfor %}
 
   push-{{ name }}:
     runs-on: {{ runner }}
     needs:
-      {% for arch in archs %}
-      - build-{{ name }}-{{ arch }}
-      {% endfor %}
+      - build-{{ name }}
     steps:
       - name: Download digests
         uses: actions/download-artifact@v4
@@ -83,28 +70,12 @@
           merge-multiple: true
 
       {% for registry in registries %}
-        {% if registry == 'docker.io' %}
-      - name: Login to Docker Hub
+      - name: Login to {{ registry }}
         uses: docker/login-action@v3
         with:
-          registry: docker.io
-          username: {% raw %}${{ secrets.DOCKERHUB_USERNAME }}{% endraw %}
-          password: {% raw %}${{ secrets.DOCKERHUB_TOKEN }}{% endraw %}
-        {% elif registry == 'quay.io' %}
-      - name: Login to Quay.io
-        uses: docker/login-action@v3
-        with:
-          registry: quay.io
-          username: {% raw %}${{ secrets.QUAY_USERNAME }}{% endraw %}
-          password: {% raw %}${{ secrets.QUAY_TOKEN }}{% endraw %}
-        {% elif registry == 'hub.oepkgs.net' %}
-      - name: Login to OEPKGS
-        uses: docker/login-action@v3
-        with:
-          registry: hub.oepkgs.net
-          username: {% raw %}${{ secrets.OEPKGS_USERNAME }}{% endraw %}
-          password: {% raw %}${{ secrets.OEPKGS_TOKEN }}{% endraw %}
-        {% endif %}
+          registry: {{ registry }}
+          username: {% raw %}${{ secrets.{% endraw %}{{ registry | replace('.', '_') | upper }}{% raw %}_USERNAME }}{% endraw %}
+          password: {% raw %}${{ secrets.{% endraw %}{{ registry | replace('.', '_') | upper }}{% raw %}_TOKEN }}{% endraw %}
       {% endfor %}
 
       - name: Set up Docker Buildx
@@ -117,11 +88,30 @@
           docker buildx imagetools create -t {{ registry }}/{{ repository }}/{{ name }}:{{ tag }} \
             $(printf '{{ repository }}/{{ name }}@sha256:%s ' *)
           {% endfor %}
+          echo "timestamp=$(date -u +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
 
-      - name: Check status
+      - name: Notify status to EulerPublisher
         uses: eferraris/rabbit-sender@v1
         with:
-          MESSAGE: "{ \"repository\": \"{{ repository }}\", \"name\": \"{{ name }}\", \"tag\": \"{{ tag }}\", \"status\": {% raw %}\"${{ job.status }}\"{% endraw %} }"
+          MESSAGE: |
+            {
+              "trigger": {
+                "type": "Github Actions",
+                "timestamp": {% raw %}"${{ env.timestamp }}"{% endraw %}
+              },
+              "artifact": {
+                "type": "container",
+                "info": {
+                  "archs": {{ archs | tojson }},
+                  "registries": {{ registries | tojson }},
+                  "repository": "{{ repository }}",
+                  "name": "{{ name }}",
+                  "version": "{{ version }}",
+                  "tag": "{{ tag }}",
+                  "status": {% raw %}"${{ job.status }}"{% endraw %}
+                }
+              }
+            }
           RABBIT_EXCHANGE_NAME: "eulerpublisher"
           ROUTING_KEY: "tracker"
           RABBIT_HOST: {% raw %}${{ secrets.RABBIT_HOST }}{% endraw %}
@@ -130,3 +120,5 @@
           RABBIT_PORT: 5672
           RABBIT_USE_SSL: false
           DURABLE: false
+
+

@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+* 删除文件 build/lib/eulerpublisher
+* after ODD2025 demo
 * test
 * finish orchestrator
 * !109 Add dockerfile generate logit
