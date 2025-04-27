@@ -1,2 +1,6 @@
 pyyaml
 pika
+gitpython
+jinja2
+requests
+schedule
