@@ -36,7 +36,7 @@ def group():
     help="The distroless container image tag.",
 )
 def build(repo, distrofile, tag):
-    obj = DistrolessPublisher(repo=repo, distrofile=distrofile, tag=tag)
+    obj = DistrolessPublisher(repo=repo, registry="docker.io", distrofile=distrofile, tag=tag)
     ret = obj.build()
     if ret != pb.PUBLISH_SUCCESS:
         sys.exit(1)
