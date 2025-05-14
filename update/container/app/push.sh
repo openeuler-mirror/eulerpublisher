@@ -18,8 +18,7 @@ rm -rf splitter/
 dnf install -y python3-dnf git python3-pip cpio
 git clone https://gitee.com/openeuler/splitter.git
 cd splitter
-pip3 install -r ./requirements.txt > /dev/null 2>&1
-python3 setup.py install > /dev/null 2>&1
+pip3 install . > /dev/null 2>&1
 
 cd ../
 rm -rf eulerpublisher/
