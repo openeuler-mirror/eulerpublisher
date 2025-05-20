@@ -258,14 +258,10 @@ def publish(arch, repo, registry, dockerfile, tag, latest, mpublish, source):
         multi=mpublish,
     )
     # used for publishing openeuler/{app} images without rebuild
-    if source and (obj.copy_and_push(source) == pb.PUBLISH_SUCCESS):
-        sys.exit(0)
-    if (not arch):
-        if obj.build_and_push() != pb.PUBLISH_SUCCESS:
+    if source:
+        if obj.copy_and_push(source) != pb.PUBLISH_SUCCESS:
             sys.exit(1)
     else:
-        if obj.build() != pb.PUBLISH_SUCCESS:
-            sys.exit(1)
-        if obj.push() != pb.PUBLISH_SUCCESS:
+        if obj.build_and_push() != pb.PUBLISH_SUCCESS:
             sys.exit(1)
     sys.exit(0)

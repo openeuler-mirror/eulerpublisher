@@ -7,6 +7,7 @@ import subprocess
 import shutil
 import sys
 import os
+import platform
 import re
 import yaml
 
@@ -99,66 +100,7 @@ def _transform_version_format(os_version: str):
 
     return ret
 
-
-"""
- # Single image scenario does not require an image-list.yml file. Example directory structure:
-/openeuler-docker-images/
-└── nginx(Application)
-    ├── x.x.x(application version)
-    │   └── xx.xx-xxx(os version)
-    │       └── Dockerfile
-    ├── doc
-    │   ├── image-info.yml
-    │   └── picture
-    │       └── logo.png
-    ├── meta.yml
-    └── README.md
-
-# Scenario/solution image categorization, example directory structure:
-/openeuler-docker-images/
-└── ai(Scenario)
-    ├── image-list.yml
-    ├── opea(solution)
-    │   ├── chatqna(application)
-    │   │   ├── x.x.x(application version)
-    │   │   │   └── xx.xx-xxx(os version)
-    │   │   │       └── Dockerfile
-    │   │   ├── doc
-    │   │   │   ├── image-info.yml
-    │   │   │   └── picture
-    │   │   │       └── logo.png
-    │   │   ├── meta.yml
-    │   │   └── README.md
-    │   └── chatqna-ui
-    │       ├── x.x.x(application version)
-    │       │   └── xx.xx-xxx(os version)
-    │       │       └── Dockerfile
-    │       ├── doc
-    │       │   ├── image-info.yml
-    │       │   └── picture
-    │       │       └── logo.png
-    │       ├── meta.yml
-    │       └── README.md
-    └── pytorch
-        ├── x.x.x(application version)
-        │   └── xx.xx-xxx(os version)
-        │       └── Dockerfile
-        ├── doc
-        │   ├── image-info.yml
-        │   └── picture
-        │       └── logo.png
-        ├── meta.yml
-        └── README.md
-        
-# AI scenario/solution image-list.yml file path:
-/openeuler-docker-images/ai/image-list.yml
-
-# AI scenario/solution image-list.yml configuration example:
-images:
-  chatqna: opea/chatqna
-  chatqna-ai: opea/chatqna-ui
-  pytorch: pytorch
-"""
+# see README for details
 def parse_image_directory(file: str):
     """
     Parse and return the image directory based on the given file path.
@@ -283,7 +225,7 @@ def _push_readme(file: str, namespace: str, image: str):
     try:
         subprocess.run(
             [script, file, namespace, image],
-            env={**os.environ, 'APIKEY__QUAY_IO': os.environ["DOCKER_QUAY_APIKEY"]}
+            env={**os.environ, 'APIKEY__QUAY_IO': os.environ.get["DOCKER_QUAY_APIKEY", ""]}
         )
     except subprocess.CalledProcessError as err:
         logger.error(f"{err}")
@@ -458,29 +400,36 @@ def _check_app_image(file: str):
     # build and push multi-platform image to `openeulertest`
     image_dir = parse_image_directory(file)
     name, tag, arch = _parse_meta_yml(file=file, image_dir=image_dir)
-    if subprocess.call([
-        "eulerpublisher",
-        "container",
-        "app",
-        "publish",
-        "-a", arch,
-        "-p", f"{TEST_NAMESPACE}/{name}",
-        "-t", tag['tag'],
-        "-l", tag['latest'],
-        "-f", file
-    ]) != 0:
-        return 1
-    # check image pulled from hub
-    if subprocess.call([
-        "eulerpublisher",
-        "container",
-        "app",
-        "check",
-        "-h", TEST_NAMESPACE,
-        "-n", name,
-        "-t", tag['tag']
-    ]) != 0:
-        return 1
+    
+    # To denote different arches
+    local_arch = platform.machine()
+    test_tag = tag['tag'] + f"-{local_arch}"
+    
+    # each CI node only build the same-arch image
+    if not arch or local_arch == arch:
+        if subprocess.call([
+            "eulerpublisher",
+            "container",
+            "app",
+            "publish",
+            "-a", local_arch,
+            "-p", f"{TEST_NAMESPACE}/{name}",
+            "-t", test_tag,   
+            "-l", "False",
+            "-f", file
+        ]) != 0:
+            return 1
+        # check image pulled from hub
+        if subprocess.call([
+            "eulerpublisher",
+            "container",
+            "app",
+            "check",
+            "-h", TEST_NAMESPACE,
+            "-n", name,
+            "-t", test_tag
+        ]) != 0:
+            return 1
     return 0
     
 def _check_distroless_image(file: str):
@@ -502,6 +451,14 @@ def _check_distroless_image(file: str):
 def _publish_app_image(file: str, image_dir: str):
     # build and push multi-platform image to `openeuler`
     name, tag, arch = _parse_meta_yml(file=file, image_dir=image_dir)
+    # multiple single-arch images are denoted by different arch suffixs
+    verified_tags = []
+    if not arch:
+        verified_tags.append(f"docker.io/{TEST_NAMESPACE}/{name}:{tag['tag']}-x86_64")
+        verified_tags.append(f"docker.io/{TEST_NAMESPACE}/{name}:{tag['tag']}-aarch64")
+    else:
+        verified_tags.append(f"docker.io/{TEST_NAMESPACE}/{name}:{tag['tag']}-{arch}")
+    
     if subprocess.call([
         "eulerpublisher",
         "container",
@@ -511,6 +468,7 @@ def _publish_app_image(file: str, image_dir: str):
         "-p", f"{OFFICIAL_NAMESPACE}/{name}",
         "-t", tag['tag'],
         "-l", tag['latest'],
+        "-s", " ".join([f"{tag}" for tag in verified_tags]),
         "-f", file,
         "-m"
     ]) != 0:
@@ -666,7 +624,7 @@ class ContainerVerification:
         if len(failed_tags) == 0:
             return 0
         else:
-            logger.error(f"Failed to publish image:{failed_tags}")
+            logger.error(f"Failed to publish image: {failed_tags}")
             return 1
 
 

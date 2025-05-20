@@ -27,14 +27,32 @@ def _get_tags(registry, repo, tag, multi):
     # tag image for all registries
     tags_bulid = ""
     tags_push = []
+    
     for item in full_repos:
         tags_bulid += "-t " + item + ":" + tag['tag']
         tags_bulid += " "
+        tags_push.append(item + ":" + tag['tag'])
         if tag['latest']:
             tags_bulid += "-t " + item + ":latest"
             tags_bulid += " "
-        tags_push.append(item + ":" + tag['tag'])
+            tags_push.append(item + ":latest")  
     return tags_bulid, tags_push
+
+def _sync_images(source: str, targets=[]):
+    try:
+        for dest in targets:
+            if subprocess.call(
+                "regctl image copy " + \
+                source + \
+                " " + \
+                dest, 
+                shell=True
+            ) != 0:
+                return pb.PUBLISH_FAILED
+    except (OSError, subprocess.CalledProcessError) as err:
+        logger.error(f"Failed to sync images: {err}")
+    logger.info("Sync images finished")       
+    return pb.PUBLISH_SUCCESS    
 
 
 class AppPublisher(pb.Publisher):
@@ -170,17 +188,39 @@ class AppPublisher(pb.Publisher):
         return pb.PUBLISH_SUCCESS
     
     def copy_and_push(self, source: str):
+        '''
+            This function has two steps:
+            1. use multiple single images to create one multi-arch image on the source resgitry
+            2. use `regctl image copy` to sync the multi-arch image on the source resgitry to other registries
+        '''
         if not source:
             return pb.PUBLISH_FAILED
+        # get the source registry, the default is `docker.io`
+        src_tags = source.split()
+        src_registry = src_tags[0].split("/", 1)[0]
+        default_tags = [tag for tag in self.tags_push if tag.startswith(src_registry)]
+        other_tags = [tag for tag in self.tags_push if not tag.startswith(src_registry)]
+        
+        # login registry
+        if (pb.login_registry(registry=self.registry, multi=self.multi_file) != pb.PUBLISH_SUCCESS):
+            return pb.PUBLISH_FAILED
+        
+        # use `buildx imagetools create` to create
+        # a multi-arch image from multiple single-arch images
         try:
             if subprocess.call(
                 "docker buildx imagetools create " + \
-                self.tags_build + " " + \
-                source, 
+                " ".join([f"-t {tag}" for tag in default_tags]) + \
+                " " + \
+                " ".join([f"{tag}" for tag in src_tags]), 
                 shell=True
             ) != 0:
                 return pb.PUBLISH_FAILED
         except (OSError, subprocess.CalledProcessError) as err:
-            logger.error(f"[Push] {err}")
-        logger.info("[Copy_and_Push] finished")       
+            logger.error(f"Failed to create image: {err}")
+            
+        # sync multi-arch image to all other registries
+        if _sync_images(default_tags[0], other_tags) != pb.PUBLISH_SUCCESS:
+            return pb.PUBLISH_FAILED
+        logger.info("Sync images finished")
         return pb.PUBLISH_SUCCESS
