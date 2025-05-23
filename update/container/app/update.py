@@ -225,7 +225,7 @@ def _push_readme(file: str, namespace: str, image: str):
     try:
         subprocess.run(
             [script, file, namespace, image],
-            env={**os.environ, 'APIKEY__QUAY_IO': os.environ.get["DOCKER_QUAY_APIKEY", ""]}
+            env={**os.environ, 'APIKEY__QUAY_IO': os.environ.get("DOCKER_QUAY_APIKEY", "")}
         )
     except subprocess.CalledProcessError as err:
         logger.error(f"{err}")
