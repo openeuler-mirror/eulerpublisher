@@ -11,7 +11,7 @@ import platform
 import re
 import yaml
 
-from packaging.version import Version
+from packaging.version import parse, InvalidVersion
 from prettytable import PrettyTable
 from eulerpublisher.publisher import logger
 
@@ -211,12 +211,22 @@ def _parse_meta_yml(file: str, image_dir: str):
         tag['tag'] = re.sub(r'\D', '.', image_version) + \
                      "-oe" + _transform_version_format(os_version)
     # check if the tag is the latest
-    if not tags:
-        tag['latest'] = "True"
-    elif Version(tag['tag'].split('-')[0]) >= max([Version(s.split('-')[0]) for s in tags]):
-        tag['latest'] = "True"
+    tag['latest'] = is_latest(tag['tag'], tags)
     return image_name, tag, arch
 
+def is_latest(current_tag, published_tags):
+    if not published_tags:
+        return "True"
+    try:
+        published_versions = [parse(s.split('-')[0]) for s in published_tags]
+        current_version = parse(current_tag.split('-')[0])
+        if not published_versions:
+            return "True"
+        elif current_version >= max(published_versions):
+            return "True"
+        return "False"
+    except InvalidVersion:
+        return "True"
 
 def _push_readme(file: str, namespace: str, image: str):
     current = os.path.dirname(os.path.abspath(__file__))
