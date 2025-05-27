@@ -591,8 +591,7 @@ class ContainerVerification:
         if not rs:
             logger.warning("comment pull request failed")
             return 1
-        print(rs)
-        return 0 
+        return 0
 
     def check_updates(self):
         os.chdir(self.workdir)
@@ -669,7 +668,7 @@ class ContainerVerification:
                 status[full_tag] = success
             else:
                 continue
-        self.comment_publish_result(self, status)
+        self.comment_publish_result(status)
         if False in status.values():
             return 0
         else:
