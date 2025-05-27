@@ -78,15 +78,31 @@ FILE_PATH_FORMAT = {
     "Distrofile": "{0}/{1}/{2}/Distrofile"
 }
 
-
-def _request(url: str):
+def _request(method: str, url: str, body=None, timeout=MAX_REQUEST_COUNT):
+    # support only `get` and `post`
+    if method.lower() not in ["get", "post"]:
+        return 1
+    # set timeout
     cnt = 0
     response = None
-    while (not response) and (cnt < MAX_REQUEST_COUNT):
-        response = requests.get(url=url)
-        cnt += 1
+    try:
+        while (not response) and (cnt < timeout):
+            if method.lower() == "get":
+                response = requests.get(url=url)
+            else:
+                json = {
+                    "access_token": os.environ["GITEE_API_TOKEN"],
+                    "body": body
+                }
+                response = requests.post(url=url, json=json)
+            cnt += 1
+    except requests.exceptions.Timeout as e:
+        logger.warning("requests timeout")
+        return None
+    except requests.exceptions.RequestException as e:
+        logger.warning("requests exception, %s", e)
+        return None
     return response
-
 
 # transform openEuler version into specifical format
 # e.g., 22.03-lts-sp3 -> oe2203sp3
@@ -469,6 +485,8 @@ def _publish_app_image(file: str, image_dir: str):
     else:
         verified_tags.append(f"docker.io/{TEST_NAMESPACE}/{name}:{tag['tag']}-{arch}")
     
+    full_tag = f"{name}:{tag['tag']}"
+    success = True
     if subprocess.call([
         "eulerpublisher",
         "container",
@@ -482,12 +500,14 @@ def _publish_app_image(file: str, image_dir: str):
         "-f", file,
         "-m"
     ]) != 0:
-        return tag['tag']
-    return ""
+        success = False
+    return full_tag, success
 
 def _publish_distroless_image(file: str, image_dir: str):
     # build and push distroless image to `openeuler`
     name, tag, arch = _parse_meta_yml(file=file, image_dir=image_dir)
+    full_tag = f"{name}:{tag['tag']}"
+    success = True
     if subprocess.call([
         "eulerpublisher",
         "container",
@@ -498,8 +518,9 @@ def _publish_distroless_image(file: str, image_dir: str):
         "-f", file,
         "-m"
     ]) != 0:
-        return tag['tag']
-    return ""
+        success = False
+    return full_tag, success
+
 
 class ContainerVerification:
     '''
@@ -528,7 +549,7 @@ class ContainerVerification:
     def get_change_files(self):
         url = REPOSITORY_REQUEST_URL + f"{self.prid}/files?access_token=" + \
               os.environ["GITEE_API_TOKEN"]
-        response = _request(url=url)
+        response = _request(method="get", url=url)
         # check status code
         if response.status_code == SUCCESS_CODE:
             files = response.json()
@@ -553,6 +574,25 @@ class ContainerVerification:
             return 1
         logger.info(f"Clone {s_repourl} successfully.")
         return 0
+    
+    def comment_publish_result(self, status):
+        head = "<tr><th colspan=2>Image Tag</th> <th>Publish Result</th></tr>"
+        body = ""
+        for tag, success in status.items():
+            result = ":white_check_mark:SUCCESS"
+            if not success:
+                result = ":x:FAILED"
+            body += f"<tr><th colspan=2>{tag}</th> <th>{result}</th></tr>"
+        # all publish results
+        comment = "<table>" + head + body + "</table>"
+        # post comment
+        url = f"{REPOSITORY_REQUEST_URL}{self.prid}/comments"
+        rs = _request(method="post", url=url, body=comment)
+        if not rs:
+            logger.warning("comment pull request failed")
+            return 1
+        print(rs)
+        return 0 
 
     def check_updates(self):
         os.chdir(self.workdir)
@@ -610,7 +650,7 @@ class ContainerVerification:
 
     def publish_updates(self):
         os.chdir(self.workdir)
-        failed_tags = []
+        status = {}
         for file in self.change_files:
             if not os.path.exists(file):
                 logger.info(f"The file: {file} is deleted, no need to publish.")
@@ -622,19 +662,17 @@ class ContainerVerification:
                 _push_readme(file=file, namespace="openeuler", image=image)
                 continue
             if os.path.basename(file) == "Dockerfile":
-                failed = _publish_app_image(file=file, image_dir=image_dir)
-                if failed:
-                    failed_tags.append(failed)
+                full_tag, success = _publish_app_image(file=file, image_dir=image_dir)
+                status[full_tag] = success
             elif os.path.basename(file) == "Distrofile":
-                failed = _publish_distroless_image(file=file, image_dir=image_dir)
-                if failed:
-                    failed_tags.append(failed)
+                full_tag, success = _publish_distroless_image(file=file, image_dir=image_dir)
+                status[full_tag] = success
             else:
                 continue
-        if len(failed_tags) == 0:
+        self.comment_publish_result(self, status)
+        if False in status.values():
             return 0
         else:
-            logger.error(f"Failed to publish image: {failed_tags}")
             return 1
 
 
