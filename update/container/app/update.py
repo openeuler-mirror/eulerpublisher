@@ -670,9 +670,8 @@ class ContainerVerification:
                 continue
         self.comment_publish_result(status)
         if False in status.values():
-            return 0
-        else:
             return 1
+        return 0
 
 
 def init_parser():
