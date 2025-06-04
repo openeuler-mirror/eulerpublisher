@@ -18,6 +18,7 @@ for path in paths:
 CONFIG_DIR = os.path.join(ROOT_DIR, "configs")
 TEST_DIR = os.path.join(ROOT_DIR, "tests")
 TEMPLATE_DIR = os.path.join(ROOT_DIR, "templates")
+ASSET_DIR = os.path.join(ROOT_DIR, "assets")
 DOCKERFILE_TEMPLATE_DIR = os.path.join(TEMPLATE_DIR, "recipes", "container")
 SHELL_TEMPLATE_DIR = os.path.join(TEMPLATE_DIR, "recipes", "shell")
 SPECFILE_TEMPLATE_DIR = os.path.join(TEMPLATE_DIR, "recipes", "rpm")
@@ -55,3 +56,5 @@ name: EulerPublisher 🚀
 on: [push]
 jobs:
 """
+
+GITHUB_ACTIONS_SUCCESS = "success"

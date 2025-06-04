@@ -1,10 +1,11 @@
 ARG BASE={{ base }}
+ARG VERSION={{ version }}
 
 FROM openeuler/openeuler:24.03-lts as builder
 
-ARG VERSION={{ version }}
-
+ARG VERSION
 ARG TARGETARCH
+
 
 # Install dependencies
 RUN yum update -y && \
@@ -49,8 +50,15 @@ FROM ${BASE} AS official
 
 ARG VERSION
 
-COPY --from=builder /usr/local/python* /usr/local/
+COPY --from=builder /usr/local/python* /usr/local/python
 
 RUN VERSION_SHORT=$(echo "${VERSION}" | cut -d. -f1,2) && \
-    echo "export PATH=/usr/local/python${VERSION_SHORT}/bin:${PATH}" >> /etc/profile && \
-    echo "export PATH=/usr/local/python${VERSION_SHORT}/bin:${PATH}" >> ~/.bashrc
+    VERSION_MAJOR=$(echo "${VERSION}" | cut -d. -f1,2,3) && \
+    PY_HOME=/usr/local/python${VERSION_SHORT} && \
+    mv /usr/local/python ${PY_HOME} && \
+    ln -sf ${PY_HOME}/bin/python${VERSION_SHORT} ${PY_HOME}/bin/python${VERSION_MAJOR} && \
+    ln -sf ${PY_HOME}/bin/pip${VERSION_SHORT} ${PY_HOME}/bin/pip${VERSION_MAJOR} && \
+    ln -sf ${PY_HOME}/bin/python${VERSION_MAJOR} ${PY_HOME}/bin/python && \
+    ln -sf ${PY_HOME}/bin/pip${VERSION_MAJOR} ${PY_HOME}/bin/pip && \
+    echo "export PATH=${PY_HOME}/bin:${PATH}" >> /etc/profile && \
+    echo "export PATH=${PY_HOME}/bin:${PATH}" >> ~/.bashrc

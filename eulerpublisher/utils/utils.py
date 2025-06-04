@@ -10,6 +10,12 @@ from eulerpublisher.utils.exceptions import (
     GitPushFailed,
 )
 
+def _dict_factory(cursor, row):
+    d = {}
+    for idx, col in enumerate(cursor.description):
+        d[col[0]] = row[idx]
+    return d
+
 def _copy_template(src_dir, dest_dir):
     shutil.copytree(src_dir, dest_dir, dirs_exist_ok=True)
 
