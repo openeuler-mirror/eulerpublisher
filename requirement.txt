@@ -1,5 +1,6 @@
 pyyaml
 pika
-jinja2
 gitpython
-gradio
+jinja2
+requests
+schedule

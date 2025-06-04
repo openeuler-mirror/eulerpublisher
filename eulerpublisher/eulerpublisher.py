@@ -16,18 +16,18 @@ def main():
     ui = UI(config=config, logger=logger, db=db)
 
     orchestrator.start()
-    # monitor.start()
+    monitor.start()
     tracker.start()
     ui.start()
  
     try:
         orchestrator.join()
-        # monitor.join()
+        monitor.join()
         tracker.join()
         ui.join()
     except KeyboardInterrupt:
         orchestrator.terminate()
-        # monitor.terminate()
+        monitor.terminate()
         tracker.terminate()
         ui.terminate()
         
