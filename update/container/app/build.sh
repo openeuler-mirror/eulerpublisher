@@ -2,12 +2,12 @@
 set -e
 # clear unused resources
 echo "清理缓存..."
-docker image prune -f
-docker container prune -f
-docker network prune -f
-docker system prune -af
+docker image prune -f > /dev/null 2>&1
+docker container prune -f > /dev/null 2>&1
+docker network prune -f > /dev/null 2>&1
+docker system prune -af > /dev/null 2>&1
+docker volume rm $(docker volume ls -q) --force > /dev/null 2>&1 || true
 docker system df
-docker volume rm $(docker volume ls -q) --force || true
 echo "清理完成!"
 
 if [ docker info > /dev/null 2>&1 ]; then
