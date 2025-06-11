@@ -5,9 +5,9 @@ echo "清理缓存..."
 docker image prune -f
 docker container prune -f
 docker network prune -f
-docker volume prune -f
 docker system prune -af
 docker system df
+docker volume rm $(docker volume ls -q) --force || true
 echo "清理完成!"
 
 if [ docker info > /dev/null 2>&1 ]; then
