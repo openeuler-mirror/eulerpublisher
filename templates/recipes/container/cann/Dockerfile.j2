@@ -1,95 +1,138 @@
-# Arguments
-ARG PY_VERSION=3.10
 ARG BASE={{ base }}
-ARG CANN_VERSION={{ version }}
+ARG VERSION={{ version }}
 
-# Stage 1: Install CANN
-FROM ascendai/python:${PY_VERSION}-openeuler24.03 AS cann-installer
+FROM ${BASE} AS builder
 
-# Arguments
-ARG PLATFORM=${TARGETPLATFORM}
-ARG CANN_CHIP=910b
-ARG CANN_VERSION
+ARG VERSION
+ARG TARGETPLATFORM
 
-# Install dependencies
 RUN yum update -y && \
     yum install -y \
-        gcc \
-        gcc-c++ \
-        make \
-        cmake \
         unzip \
-        zlib-devel \
-        libffi-devel \
-        openssl-devel \
         pciutils \
         net-tools \
-        sqlite-devel \
         lapack-devel \
         gcc-gfortran \
         util-linux \
         findutils \
-        curl \
+        wget \
     && yum clean all \
-    && rm -rf /var/cache/yum \
-    && rm -rf /tmp/*
+    && rm -rf /var/cache/yum
 
-COPY ./cann.sh /tmp/cann.sh
-RUN bash /tmp/cann.sh --download
-RUN bash /tmp/cann.sh --install
+# Note: Install CANN runtime dependencies
+RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir \
+        attrs cython numpy==1.24.0 decorator sympy cffi pyyaml pathlib2 \
+        psutil protobuf==3.20 scipy requests absl-py
 
-# Stage 2: Copy results from previous stages
+# Note: Get the download link according to ARCH and download the installation package
+RUN ARCH=$(case "${TARGETPLATFORM}" in \
+        "linux/amd64") echo "x86_64" ;; \
+        "linux/arm64") echo "aarch64" ;; \
+        *) echo "Unsupported TARGETPLATFORM: ${TARGETPLATFORM}" && exit 1 ;; \
+    esac) && \
+    CANN_TOOLKIT_URL=https://ascend-repo.obs.cn-east-2.myhuaweicloud.com/CANN/CANN%20${VERSION}/Ascend-cann-toolkit_${VERSION}_linux-${ARCH}.run && \
+    CANN_KERNELS_URL=https://ascend-repo.obs.cn-east-2.myhuaweicloud.com/CANN/CANN%20${VERSION}/Ascend-cann-kernels-910b_${VERSION}_linux-${ARCH}.run && \
+    CANN_NNAL_URL=https://ascend-repo.obs.cn-east-2.myhuaweicloud.com/CANN/CANN%20${VERSION}/Ascend-cann-nnal_${VERSION}_linux-${ARCH}.run && \
+    wget --quiet --header="Referer: https://www.hiascend.com/" ${CANN_TOOLKIT_URL} -O ~/Ascend-cann-toolkit.run && \
+    wget --quiet --header="Referer: https://www.hiascend.com/" ${CANN_KERNELS_URL} -O ~/Ascend-cann-kernels.run && \
+    wget --quiet --header="Referer: https://www.hiascend.com/" ${CANN_NNAL_URL} -O ~/Ascend-cann-nnal.run
+
+# Note: Install CANN Toolkit Development Kit Package
+RUN chmod +x ~/Ascend-cann-toolkit.run && \
+    ~/Ascend-cann-toolkit.run --quiet --install --install-for-all && \
+    rm -f ~/Ascend-cann-toolkit.run
+
+# Note: Install CANN Kernels Operator Package
+RUN chmod +x ~/Ascend-cann-kernels.run && \
+    ~/Ascend-cann-kernels.run --quiet --install --install-for-all && \
+    rm -f ~/Ascend-cann-kernels.run
+
+# Note: Install CANN NNAL Neural Network Acceleration Library
+RUN . /usr/local/Ascend/ascend-toolkit/set_env.sh && \
+    chmod +x ~/Ascend-cann-nnal.run && \
+    ~/Ascend-cann-nnal.run --quiet --install --install-for-all && \
+    rm -f ~/Ascend-cann-nnal.run
+    
+# Stage 3: Copy results from previous stages
 FROM ${BASE} AS official
 
-# Arguments
-ARG PY_VERSION
+ARG VERSION
 
-# Environment variables
-ENV PATH=/usr/local/python${PY_VERSION}/bin:${PATH}
-ENV LD_LIBRARY_PATH=/usr/local/Ascend/driver/lib64/common:/usr/local/Ascend/driver/lib64/driver:${LD_LIBRARY_PATH}
+# Note: Toolkit Environment variables, obtained from /usr/local/Ascend/ascend-toolkit/set_env.sh
+ENV ASCEND_TOOLKIT_HOME=/usr/local/Ascend/ascend-toolkit/latest
+ENV LD_LIBRARY_PATH=/usr/local/Ascend/driver/lib64/common/:/usr/local/Ascend/driver/lib64/driver/:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=${ASCEND_TOOLKIT_HOME}/lib64:${ASCEND_TOOLKIT_HOME}/lib64/plugin/opskernel:${ASCEND_TOOLKIT_HOME}/lib64/plugin/nnengine:${ASCEND_TOOLKIT_HOME}/opp/built-in/op_impl/ai_core/tbe/op_tiling:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=${ASCEND_TOOLKIT_HOME}/tools/aml/lib64:${ASCEND_TOOLKIT_HOME}/tools/aml/lib64/plugin:$LD_LIBRARY_PATH
+ENV PYTHONPATH=${ASCEND_TOOLKIT_HOME}/python/site-packages:${ASCEND_TOOLKIT_HOME}/opp/built-in/op_impl/ai_core/tbe:$PYTHONPATH
+ENV PATH=${ASCEND_TOOLKIT_HOME}/bin:${ASCEND_TOOLKIT_HOME}/compiler/ccec_compiler/bin:${ASCEND_TOOLKIT_HOME}/tools/ccec_compiler/bin:$PATH
+ENV ASCEND_AICPU_PATH=${ASCEND_TOOLKIT_HOME}
+ENV ASCEND_OPP_PATH=${ASCEND_TOOLKIT_HOME}/opp
+ENV TOOLCHAIN_HOME=${ASCEND_TOOLKIT_HOME}/toolkit
+ENV ASCEND_HOME_PATH=${ASCEND_TOOLKIT_HOME}
 
-# Change the default shell
+# Note: NNAL Environment variables, obtained from /usr/local/Ascend/nnal/set_env.sh
+ENV ATB_HOME_PATH=/usr/local/Ascend/nnal/atb/latest/atb/cxx_abi_0
+ENV LD_LIBRARY_PATH=${ATB_HOME_PATH}/lib:${ATB_HOME_PATH}/examples:${ATB_HOME_PATH}/tests/atbopstest:${LD_LIBRARY_PATH}
+ENV PATH=${ATB_HOME_PATH}/bin:$PATH
+ENV ATB_STREAM_SYNC_EVERY_KERNEL_ENABLE=0
+ENV ATB_STREAM_SYNC_EVERY_RUNNER_ENABLE=0
+ENV ATB_STREAM_SYNC_EVERY_OPERATION_ENABLE=0
+ENV ATB_OPSRUNNER_SETUP_CACHE_ENABLE=1
+ENV ATB_OPSRUNNER_KERNEL_CACHE_TYPE=3
+ENV ATB_OPSRUNNER_KERNEL_CACHE_LOCAL_COUNT=1
+ENV ATB_OPSRUNNER_KERNEL_CACHE_GLOABL_COUNT=5
+ENV ATB_OPSRUNNER_KERNEL_CACHE_TILING_SIZE=10240
+ENV ATB_WORKSPACE_MEM_ALLOC_ALG_TYPE=1
+ENV ATB_WORKSPACE_MEM_ALLOC_GLOBAL=0
+ENV ATB_COMPARE_TILING_EVERY_KERNEL=0
+ENV ATB_HOST_TILING_BUFFER_BLOCK_NUM=128
+ENV ATB_DEVICE_TILING_BUFFER_BLOCK_NUM=32
+ENV ATB_SHARE_MEMORY_NAME_SUFFIX=""
+ENV ATB_LAUNCH_KERNEL_WITH_TILING=1
+ENV ATB_MATMUL_SHUFFLE_K_ENABLE=1
+ENV ATB_RUNNER_POOL_SIZE=64
+ENV ASDOPS_HOME_PATH=${ATB_HOME_PATH}
+ENV ASDOPS_MATMUL_PP_FLAG=1
+ENV ASDOPS_LOG_LEVEL=ERROR
+ENV ASDOPS_LOG_TO_STDOUT=0
+ENV ASDOPS_LOG_TO_FILE=1
+ENV ASDOPS_LOG_TO_FILE_FLUSH=0
+ENV ASDOPS_LOG_TO_BOOST_TYPE=atb
+ENV ASDOPS_LOG_PATH=/root
+ENV ASDOPS_TILING_PARSE_CACHE_DISABLE=0
+ENV LCCL_DETERMINISTIC=0
+ENV LCCL_PARALLEL=0 
+
 SHELL [ "/bin/bash", "-c" ]
 
-# Install dependencies
 RUN yum update -y && \
     yum install -y \
         ca-certificates \
         bash \
         glibc \
         sqlite-devel \
+        gcc \
+        gcc-c++ \
+        make \
+        cmake \
     && yum clean all \
     && rm -rf /var/cache/yum \
     && rm -rf /tmp/*
 
-# Copy files
-COPY --from=cann-installer /usr/local/python${PY_VERSION} /usr/local/python${PY_VERSION}
-COPY --from=cann-installer /usr/local/Ascend /usr/local/Ascend
-COPY --from=cann-installer /etc/Ascend /etc/Ascend
+COPY --from=builder /usr/local/Ascend /usr/local/Ascend
+COPY --from=builder /etc/Ascend /etc/Ascend
 
-# Set environment variables
+# Note: Set environment variables
 RUN \
-    # Set environment variables for Python \
-    PY_PATH="PATH=/usr/local/python${PY_VERSION}/bin:\${PATH}" && \
-    echo "export ${PY_PATH}" >> /etc/profile && \
-    echo "export ${PY_PATH}" >> ~/.bashrc && \
-    # Set environment variables for CANN \
     CANN_TOOLKIT_ENV_FILE="/usr/local/Ascend/ascend-toolkit/set_env.sh" && \
-    DRIVER_LIBRARY_PATH="LD_LIBRARY_PATH=/usr/local/Ascend/driver/lib64/common:/usr/local/Ascend/driver/lib64/driver:\${LD_LIBRARY_PATH}" && \
-    echo "export ${DRIVER_LIBRARY_PATH}" >> /etc/profile && \
-    echo "export ${DRIVER_LIBRARY_PATH}" >> ~/.bashrc && \
+    CANN_NNAL_ENV_FILE="/usr/local/Ascend/nnal/atb/set_env.sh" && \
     echo "source ${CANN_TOOLKIT_ENV_FILE}" >> /etc/profile && \
     echo "source ${CANN_TOOLKIT_ENV_FILE}" >> ~/.bashrc && \
-    echo "source ${CANN_TOOLKIT_ENV_FILE}" >> ~/.bashrc && \
-    CANN_NNAL_ENV_FILE="/usr/local/Ascend/nnal/atb/set_env.sh" && \
-    if [ -f "${CANN_NNAL_ENV_FILE}" ]; then \
-        echo "source ${CANN_NNAL_ENV_FILE}" >> /etc/profile && \
-        echo "source ${CANN_NNAL_ENV_FILE}" >> ~/.bashrc; \
-    fi
+    echo "source ${CANN_NNAL_ENV_FILE}" >> /etc/profile && \
+    echo "source ${CANN_NNAL_ENV_FILE}" >> ~/.bashrc
 
 ENTRYPOINT ["/bin/bash", "-c", "\
-  source /usr/local/Ascend/ascend-toolkit/set_env.sh && \
-  if [ -f /usr/local/Ascend/nnal/atb/set_env.sh ]; then \
-    source /usr/local/Ascend/nnal/atb/set_env.sh; \
-  fi && \
-  exec \"$@\"", "--"]
+    source /usr/local/Ascend/ascend-toolkit/set_env.sh && \
+    source /usr/local/Ascend/nnal/atb/set_env.sh && \
+    exec \"$@\"", "--"]

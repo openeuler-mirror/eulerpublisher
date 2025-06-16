@@ -4,7 +4,6 @@ from datetime import datetime
 from git import Repo, GitCommandError
 from jinja2 import Environment, FileSystemLoader
 from eulerpublisher.utils.exceptions import (
-    NoSuchFile,
     GitCloneFailed,
     GitPullFailed,
     GitPushFailed,

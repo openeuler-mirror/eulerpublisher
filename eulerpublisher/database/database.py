@@ -13,7 +13,7 @@ class Database:
         self.config = config
         self.logger = logger
         self._create_table()
-        self.logger.info(f"Database initialized")
+        self.logger.info("Database initialized")
 
     def _create_table(self):
         try:
@@ -57,7 +57,7 @@ class Database:
                 ''')
                 
                 cursor.execute('''
-                CREATE TABLE IF NOT EXISTS dependency_data (
+                CREATE TABLE IF NOT EXISTS dependency (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     software_id INTEGER NOT NULL,
                     dependency_id INTEGER NOT NULL,
@@ -67,8 +67,9 @@ class Database:
                 conn.commit()
         except sqlite3.Error as e:
             self.logger.error(f"Error creating tables: {e}")
+            raise DatabaseError(f"Failed to create database tables: {e}")
 
-    def insert_software(self, name):
+    def insert_software(self, software_name):
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -76,16 +77,15 @@ class Database:
                 cursor.execute('''
                 INSERT INTO software (name)
                 VALUES (?)
-                ''', (name,))
+                ''', (software_name,))
                 conn.commit()
-                return cursor.lastrowid
         except sqlite3.IntegrityError:
-            self.logger.warning(f"Software {name} already exists")
-            return self.query_software(name)
+            self.logger.warning(f"Software {software_name} already exists")
         except sqlite3.Error as e:
             self.logger.error(f"Error inserting software: {e}")
+            raise DatabaseError(f"Failed to insert software: {e}")
 
-    def delete_software(self, name):
+    def delete_software(self, software_name):
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute("PRAGMA FOREIGN_KEYS=ON")
@@ -93,25 +93,27 @@ class Database:
                 cursor.execute('BEGIN TRANSACTION')
                 cursor.execute('''
                 DELETE FROM software WHERE name = ?
-                ''', (name,))
+                ''', (software_name,))
                 conn.commit()
         except sqlite3.IntegrityError as e:
-            self.logger.warning(f"Software {name} has dependent records and cannot be deleted")
+            self.logger.warning(f"Software {software_name} has dependent records and cannot be deleted")
         except sqlite3.Error as e:
             self.logger.error(f"Error deleting software: {e}")
+            raise DatabaseError(f"Failed to delete software: {e}")
 
-    def query_software(self, name):
+    def query_software(self, software_name):
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = _dict_factory
                 cursor = conn.cursor()
                 cursor.execute('''
                 SELECT id FROM software WHERE name = ?
-                ''', (name,))
+                ''', (software_name,))
                 result = cursor.fetchone()
                 return result
         except sqlite3.Error as e:
             self.logger.error(f"Error querying software: {e}")
+            raise DatabaseError(f"Failed to query software: {e}")
 
     def list_software(self):
         try:
@@ -125,24 +127,15 @@ class Database:
                 return result
         except sqlite3.Error as e:
             self.logger.error(f"Error listing software: {e}")
+            raise DatabaseError(f"Failed to list software: {e}")
 
-    def query_softwares(self):
+    def insert_version(self, software_name, version_name):
+        software = self.query_software(software_name)
+        if software is None:
+            self.logger.error(f"Software {software_name} not found")
+            return None
+        
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute('SELECT software_name FROM software_data')
-                results = cursor.fetchall()
-                return [result[0] for result in results]
-        except sqlite3.Error as e:
-            self.logger.error(f"Error querying all software: {e}")
-            raise DatabaseError(f"Error querying all software: {e}")
-
-    def insert_version(self, software_name, version):
-        try:
-            software = self.query_software(software_name)
-            if software is None:
-                self.logger.error(f"Software {software_name} not found")
-                raise DatabaseError(f"Software {software_name} not found")
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute('BEGIN TRANSACTION')
@@ -151,18 +144,19 @@ class Database:
                 VALUES (?, ?)
                 ''', (software['id'], version_name))
                 conn.commit()
-                return cursor.lastrowid
         except sqlite3.IntegrityError:
             self.logger.warning(f"Version {version_name} for software {software_name} already exists")
-            return self.query_version(software_name, version_name)
         except sqlite3.Error as e:
             self.logger.error(f"Error inserting version: {e}")
-
+            raise DatabaseError(f"Failed to insert version: {e}")
+        
     def delete_version(self, software_name, version_name):
+        software = self.query_software(software_name)
+        if software is None:
+            self.logger.error(f"Software {software_name} not found")
+            return
+        
         try:
-            software = self.query_software(software_name)
-            if software is None:
-                self.logger.error(f"Software {software_name} not found")
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = _dict_factory
                 conn.execute("PRAGMA FOREIGN_KEYS=ON")
@@ -176,12 +170,15 @@ class Database:
             self.logger.warning(f"Version {version_name} for software {software_name} has dependent records and cannot be deleted")
         except sqlite3.Error as e:
             self.logger.error(f"Error deleting version: {e}")
+            raise DatabaseError(f"Failed to delete version: {e}")
 
     def query_version(self, software_name, version_name):
+        software = self.query_software(software_name)
+        if software is None:
+            self.logger.error(f"Software {software_name} not found")
+            return None
+                
         try:
-            software = self.query_software(software_name)
-            if software is None:
-                self.logger.error(f"Software {software_name} not found")
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = _dict_factory
                 cursor = conn.cursor()
@@ -192,12 +189,15 @@ class Database:
                 return result
         except sqlite3.Error as e:
             self.logger.error(f"Error querying version: {e}")
+            raise DatabaseError(f"Failed to query version: {e}")
 
     def list_version(self, software_name):
+        software = self.query_software(software_name)
+        if software is None:
+            self.logger.error(f"Software {software_name} not found")
+            return None
+                
         try:
-            software = self.query_software(software_name)
-            if software is None:
-                self.logger.error(f"Software {software_name} not found")
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = _dict_factory
                 cursor = conn.cursor()
@@ -208,32 +208,19 @@ class Database:
                 return result
         except sqlite3.Error as e:
             self.logger.error(f"Error listing version: {e}")
+            raise DatabaseError(f"Failed to list version: {e}")
 
-    def query_versions(self, software_name):
+    def insert_image(self, software_name, version_name, arch, registry, repository, tag):
+        software = self.query_software(software_name)
+        if software is None:
+            self.logger.error(f"Software {software_name} not found")
+            return
+        version = self.query_version(software_name, version_name)
+        if version is None:
+            self.logger.error(f"Version {version_name} for {software_name} not found")
+            return                
+        
         try:
-            software_id = self.query_software(software_name)
-            if software_id is None:
-                self.logger.error(f"Software {software_name} not found")
-                raise DatabaseError(f"Software {software_name} not found")
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                SELECT version FROM version_data WHERE software_id = ?
-                ''', (software_id,))
-                results = cursor.fetchall()
-                return [result[0] for result in results]
-        except sqlite3.Error as e:
-            self.logger.error(f"Error querying versions: {e}")
-            raise DatabaseError(f"Error querying versions: {e}")
-
-    def insert_image(self, software_name, version, arch, registry, repository, tag):
-        try:
-            software = self.query_software(software_name)
-            if software is None:
-                self.logger.error(f"Software {software_name} not found")
-            version = self.query_version(software_name, version_name)
-            if version is None:
-                self.logger.error(f"Version {version_name} for {software_name} not found")
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = _dict_factory
                 conn.execute("PRAGMA FOREIGN_KEYS=ON")
@@ -244,18 +231,24 @@ class Database:
                 VALUES (?, ?, ?, ?, ?, ?)
                 ''', (software['id'], version['id'], arch, registry, repository, tag))
                 conn.commit()
+
         except sqlite3.IntegrityError:
             self.logger.warning(f"Image {registry}/{repository}/{software_name}:{tag} already exists")
-            return self.query_images(software_name, version_name, arch, registry, repository, tag)
-
+        except sqlite3.Error as e:
+            self.logger.error(f"Error inserting image: {e}")
+            raise DatabaseError(f"Failed to insert image: {e}")
+        
     def query_image(self, software_name, version_name, repository, tag, registry="docker.io"):
+        software = self.query_software(software_name)
+        if software is None:
+            self.logger.error(f"Software {software_name} not found")
+            return 
+        version = self.query_version(software_name, version_name)
+        if version is None:
+            self.logger.error(f"Version {version_name} for {software_name} not found")
+            return
+        
         try:
-            software = self.query_software(software_name)
-            if software is None:
-                self.logger.error(f"Software {software_name} not found")
-            version = self.query_version(software_name, version_name)
-            if version is None:
-                self.logger.error(f"Version {version_name} for {software_name} not found")
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = _dict_factory
                 cursor = conn.cursor()
@@ -266,15 +259,19 @@ class Database:
                 return result
         except sqlite3.Error as e:
             self.logger.error(f"Error querying images: {e}")
+            raise DatabaseError(f"Failed to query images: {e}")
     
     def delete_image(self, software_name, version_name, arch, registry, repository, tag):
+        software = self.query_software(software_name)
+        if software is None:
+            self.logger.error(f"Software {software_name} not found")
+            return
+        version = self.query_version(software_name, version_name)
+        if version is None:
+            self.logger.error(f"Version {version_name} for software {software_name} not found")
+            return
+        
         try:
-            software = self.query_software(software_name)
-            if software is None:
-                self.logger.error(f"Software {software_name} not found")
-            version = self.query_version(software_name, version_name)
-            if version is None:
-                self.logger.error(f"Version {version_name} for software {software_name} not found")
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = _dict_factory
                 conn.execute("PRAGMA FOREIGN_KEYS=ON")
@@ -288,14 +285,14 @@ class Database:
             self.logger.warning(f"Image {registry}/{repository}{software_name}:{tag} has dependent records and cannot be deleted")
         except sqlite3.Error as e:
             self.logger.error(f"Error deleting image: {e}")
-            raise DatabaseError(f"Error deleting image: {e}")
+            raise DatabaseError(f"Failed to delete image: {e}")
         
     def query_dependency(self, software_name):
+        software_id = self.query_software(software_name)
+        if software_id is None:
+            self.logger.error(f"Software {software_name} not found")
+            return None
         try:
-            software_id = self.query_software(software_name)
-            if software_id is None:
-                self.logger.error(f"Software {software_name} not found")
-                raise DatabaseError(f"Software {software_name} not found")
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
@@ -304,7 +301,7 @@ class Database:
                 WHERE d.software_id = ?
                 ''', (software_id,))
                 result = cursor.fetchone()
-                return result[0] if result else None
+                return result
         except sqlite3.Error as e:
             self.logger.error(f"Error querying dependency: {e}")
-            raise DatabaseError(f"Error querying dependency: {e}")
+            raise DatabaseError(f"Failed to query dependency: {e}")
