@@ -46,6 +46,7 @@ setUp() {
 test_nginx_start() {
     debug "Starting nginx container"
     tearDown
+    setUp
     assertTrue "Failed to start the nginx container" "$?"
 }
 
