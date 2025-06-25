@@ -45,9 +45,10 @@ setUp() {
 
 test_nginx_start() {
     debug "Starting nginx container"
-    setUp
+    tearDown
     assertTrue "Failed to start the nginx container" "$?"
 }
+
 test_nginx_connect_http() {
     debug "Testing HTTP connection to nginx container"
     local response=$(wget -q -O - http://localhost:"${HTTP_PORT}" || true)
