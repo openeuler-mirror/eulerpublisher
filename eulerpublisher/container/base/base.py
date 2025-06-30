@@ -17,6 +17,11 @@ DOCKERFILE_PATH = EP_PATH + "config/container/base/Dockerfile"
 TAGS = EP_PATH + "config/container/base/tags.yaml"
 DEFAULT_REGISTRY = EP_PATH + "config/container/base/registry.yaml"
 TESTCASE_PATH = EP_PATH + "tests/container/base/openeuler_test.sh"
+BASE_ARCHS = {
+    "x86_64": "amd64", 
+    "aarch64": "arm64",
+    "loongarch64": "loong64"
+}
 
 
 # tag image
@@ -62,6 +67,7 @@ def _get_dockerfile():
         )
     return DOCKERFILE_PATH
 
+
 # Class for publishing openEuler container images
 class OePublisher(pb.Publisher):
     def __init__(
@@ -92,6 +98,9 @@ class OePublisher(pb.Publisher):
             version=self.version,
             multi=self.multi_file,
         )
+        
+        # buildx platforms
+        self.platforms = ""
 
     def prepare(self):
         os.makedirs(CACHE_DATA_PATH, exist_ok=True)
@@ -100,11 +109,8 @@ class OePublisher(pb.Publisher):
         # shutil.copy2(self.dockerfile, self.version + "/Dockerfile")
         os.chdir(self.version)
 
-        for arch in pb.ARCHS:
-            if arch == "x86_64":
-                docker_arch = "amd64"
-            elif arch == "aarch64":
-                docker_arch = "arm64"
+        # get rootfs for all arches
+        for arch, platform in BASE_ARCHS.items():
             # download base images
             index = (
                 "openEuler-"
@@ -119,18 +125,19 @@ class OePublisher(pb.Publisher):
             if not os.path.exists(file_name):
                 download_url = OPENEULER_REPO + index + file_name
                 if pb.download(download_url) != pb.PUBLISH_SUCCESS:
-                    return pb.PUBLISH_FAILED
-                logger.info("\n[Prepare] Download %s successfully." % file_name)
+                    logger.warning(f"No rootfs downloaded for {arch}")
+                    continue
+                    
             # check
             sha256sum = file_name + ".sha256sum"
             subprocess.call(["rm", "-rf", sha256sum])
             sha256sum_url = OPENEULER_REPO + index + sha256sum
             if pb.download(sha256sum_url) != pb.PUBLISH_SUCCESS:
                 return pb.PUBLISH_FAILED
-            logger.info("\n[Prepare] Download %s successfully." % sha256sum)
+            logger.info(f"Download {sha256sum} successfully.")
             subprocess.call(["shasum", "-c", sha256sum])
             # get rootfs
-            rootfs = "openEuler-docker-rootfs." + docker_arch + ".tar.xz"
+            rootfs = "openEuler-docker-rootfs." + platform + ".tar.xz"
             if os.path.exists(rootfs):
                 continue
             tar_cmd = [
@@ -143,10 +150,13 @@ class OePublisher(pb.Publisher):
             subprocess.call(tar_cmd)
             for file in os.listdir("."):
                 if file.endswith(".tar") and not re.search("openEuler", file):
-                    os.rename(file, "openEuler-docker-rootfs." + docker_arch + ".tar")
+                    os.rename(file, "openEuler-docker-rootfs." + platform + ".tar")
                     subprocess.call(
-                        ["xz", "-z", "openEuler-docker-rootfs." + docker_arch + ".tar"]
+                        ["xz", "-z", "openEuler-docker-rootfs." + platform + ".tar"]
                     )
+            self.platforms = self.platforms + f"linux/{platform},"
+
+        self.platforms = self.platforms.rstrip(',') 
         logger.info("[Prepare] finished")
         return pb.PUBLISH_SUCCESS
 
@@ -172,11 +182,7 @@ class OePublisher(pb.Publisher):
             # build and push docker image
             os.chdir(self.version)
             ret = subprocess.call(
-                "docker buildx build "
-                + "--platform linux/arm64,linux/amd64 "
-                + self.tags
-                + " --push "
-                + ".",
+                f"docker buildx build --platform {self.platforms} {self.tags} --push .",
                 shell=True
             )
             subprocess.call(["docker", "buildx", "stop", builder])
@@ -216,7 +222,7 @@ class OePublisher(pb.Publisher):
 
     # Publish with one click
     def publish(self):
-        logger.info("\n[Publish] start to publish openEuler-" + self.version.upper())
+        logger.info("Start to publish openEuler-" + self.version.upper())
         if self.prepare() != pb.PUBLISH_SUCCESS:
             logger.error("[Publish] Download failed.")
             return pb.PUBLISH_FAILED
