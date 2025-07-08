@@ -49,7 +49,7 @@ class Tracker(Process):
         handle_functions[artifact_type](artifact_info)
 
     def _handle_container_status(self, artifact_info):
-        self.logger.info(f"Handling container status...")
+        self.logger.info(f"Updating container status...")
         registries = artifact_info.get("registries")
         repository = artifact_info.get("repository")
         name = artifact_info.get("name")
@@ -67,6 +67,8 @@ class Tracker(Process):
                     registry=registry, 
                     repository=repository, 
                     tag=tag)
+        
+        self.logger.info(f"Container {name}:{version} successfully updated in registries: {registries}")
 
     def _handle_rpm_status(self, artifact_info):
         pass

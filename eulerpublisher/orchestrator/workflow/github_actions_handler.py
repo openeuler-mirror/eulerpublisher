@@ -1,11 +1,14 @@
 import os
 import shutil
 import re
-from datetime import datetime
-from jinja2 import Environment, FileSystemLoader
-from git import Repo, GitCommandError
+from git import Repo
 
 from eulerpublisher.orchestrator.workflow.base import WorkflowHandler
+from eulerpublisher.utils.exceptions import (
+    UnsupportedArtifactType,
+    NoSuchFile
+)
+    
 from eulerpublisher.utils.constants import (
     WORK_DIR, 
     WORKFLOW_TYPES, 
@@ -65,7 +68,7 @@ class GithubActionsHandler(WorkflowHandler):
         pass
 
     def _handle_container_workflow(self, artifact_info):
-        self.logger.info("Handling container workflow...")
+        self.logger.info("Generating container workflow...")
         from eulerpublisher.orchestrator.recipe.dockerfile_handler import DockerfileHandler
 
         archs = artifact_info["archs"]
@@ -85,21 +88,20 @@ class GithubActionsHandler(WorkflowHandler):
         base = "scratch"
         for layer in layers:
             name = layer.get("name")
-            version = layer.get("version")
-
+            version = layer.get("version")                
+            
             # special handling for openeuler
             if name == "openeuler":
                 tag = re.sub(r'\.(?=LTS)|\.(?=SP\d)', '-', version).lower()
             else:
-                tag = f"{version}-{tag}"
-            
+                tag = f"{version}-{tag}"    
+                    
             image = self.db.query_image(
                             software_name=name, 
                             version_name=version, 
                             repository=repository, 
                             tag=tag)
             if not image or not set(archs).issubset(set(image["arch"].split(","))):
-                self.logger.info(f"Generating new workflow for {name}")
                 recipe_handler.handle_recipe(name, version, base)
                 self._handle_container_job(registries, repository, name, version, tag, needs, archs)
                 needs = name
@@ -111,9 +113,11 @@ class GithubActionsHandler(WorkflowHandler):
                 tag = "oe" + re.sub(r'\.', '', tag).lower()
             else:
                 tag = f"{name}{tag}"
+        self.logger.info("Container workflow generated successfully")
+        
 
     def _handle_container_job(self, registries, repository, name, version, tag, needs, archs):
-        self.logger.info(f"Generating job for {name}...")
+        self.logger.info(f"Generating job for {name}:{version}...")
         template_path = os.path.join(GITHUB_ACTIONS_TEMPLATE_DIR, ARTIFACT_TYPES[0] + ".yml.j2")
         if not os.path.exists(template_path):
             self.logger.error(f"Template {template_path} not found")
@@ -138,6 +142,7 @@ class GithubActionsHandler(WorkflowHandler):
             },
             mode="a",
         )
+        self.logger.info(f"Job for {name}:{version} generated successfully")
 
     def upload_workflow(self):
         self.logger.info("Uploading Github Actions workflow...")

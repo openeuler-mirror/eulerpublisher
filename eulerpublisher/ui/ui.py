@@ -8,7 +8,7 @@ from eulerpublisher.utils.constants import ASSET_DIR
 
 PACKAGES_DEP_PYTHON = ["cann", "pytorch"]
 SUPPORTED_VERSIONS = {
-    "cann": ["8.0.0.alpha001", "8.0.RC2.alpha003", "8.1.RC1.alpha001 "],
+    "cann": ["8.1.RC1", "8.0.0", "8.0.RC3", "8.0.RC2", "8.0.RC1"],
     "python": ["3.9.1", "3.10.1", "3.11.1"],
     "pytorch": ["2.4.1", "2.5.0", "2.6.0"]
 }
@@ -101,7 +101,7 @@ class UI(Process):
             # select openEuler
             gr.Markdown("<hr>")
             gr.Markdown("<h2 style='font-size: 24px;'>Step 1: openEuler版本</h2>")
-            versions = ["25.03", "24.03.LTS.SP1", "24.03.LTS", "22.03.LTS.SP4", "22.03.LTS"]
+            versions = ["25.03", "24.03.LTS.SP1", "24.03.LTS", "22.03.LTS.SP1", "22.03.LTS"]
             oe_version = gr.Dropdown(
                 label="openEuler 版本",
                 choices=versions,

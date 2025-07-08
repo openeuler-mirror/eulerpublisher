@@ -1,18 +1,17 @@
 CHANGES
 =======
 
-* !112 实现Orchestrator
-* finish orchestrator
-* !109 Add dockerfile generate logit
-* fix path problem
-* add dockerfile generate logit
-* add dockerfile template
+* !120 Add auto triggering build image feature
+* Remove database init
 * fix
-* Code structure refactoring
-* !105 add factory v1.0
+* update templates/recipes/container/python/Dockerfile.j2
+* fix
+* Add auto triggering build requests feature
+* add monitor inital
 * 删除文件 build/lib/eulerpublisher
 * after ODD2025 demo
 * test
+* !112 实现Orchestrator
 * finish orchestrator
 * !109 Add dockerfile generate logit
 * fix path problem
@@ -24,7 +23,6 @@ CHANGES
 * !107 Add incremental image builds logit
 * Add comments
 * Change filtering python versions
-* add factory v1.0
 * add factory v1.0
 * add eulerpublisher call
 * change recursive incremental building

@@ -11,23 +11,23 @@ def main():
     logger = Logger(config=config)
     db = Database(config=config, logger=logger)
     orchestrator = Orchestrator(config=config, logger=logger, db=db)
-    monitor = Monitor(config=config, logger=logger, db=db)
+    # monitor = Monitor(config=config, logger=logger, db=db)
     tracker = Tracker(config=config, logger=logger, db=db)
     ui = UI(config=config, logger=logger, db=db)
 
     orchestrator.start()
-    monitor.start()
+    # monitor.start()
     tracker.start()
     ui.start()
  
     try:
         orchestrator.join()
-        monitor.join()
+        # monitor.join()
         tracker.join()
         ui.join()
     except KeyboardInterrupt:
         orchestrator.terminate()
-        monitor.terminate()
+        # monitor.terminate()
         tracker.terminate()
         ui.terminate()
         

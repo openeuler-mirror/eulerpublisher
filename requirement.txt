@@ -4,3 +4,5 @@ gitpython
 jinja2
 requests
 schedule
+colorlog
+inspect
