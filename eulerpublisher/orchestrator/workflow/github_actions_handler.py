@@ -105,7 +105,7 @@ class GithubActionsHandler(WorkflowHandler):
                 recipe_handler.handle_recipe(name, version, base)
                 self._handle_container_job(registries, repository, name, version, tag, needs, archs)
                 needs = name
-            base = f"{repository}/{name}:{tag}"
+            base = f"{registries}/{repository}/{name}:{tag}"
 
             # special handling for openeuler
             if name == "openeuler":
