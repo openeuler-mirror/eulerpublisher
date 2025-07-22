@@ -187,7 +187,7 @@ def check(name, hubnamespace, script, tag):
 @click.option(
     "-a",
     "--arch",
-    help="The architecture of required application image, "
+    help="The architectures of required application image, "
     "the default is multi-platform of arm64 and amd64."
 )
 @click.option(
