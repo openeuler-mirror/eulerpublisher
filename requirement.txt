@@ -6,3 +6,4 @@ requests
 schedule
 colorlog
 inspect
+gradio

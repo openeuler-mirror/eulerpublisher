@@ -1,6 +1,9 @@
 CHANGES
 =======
 
+* !134 update exception and logging process
+* update exception and logging process
+* !119 after ODD2025 demo
 * !120 Add auto triggering build image feature
 * Remove database init
 * fix

@@ -86,7 +86,7 @@
         run: |
           {% for registry in registries %}
           docker buildx imagetools create -t {{ registry }}/{{ repository }}/{{ name }}:{{ tag }} \
-            $(printf '{{ repository }}/{{ name }}@sha256:%s ' *)
+            $(printf '{{ registry }}/{{ repository }}/{{ name }}@sha256:%s ' *)
           {% endfor %}
           echo "timestamp=$(date -u +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
 
