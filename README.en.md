@@ -50,7 +50,7 @@ pip install -r ./requirement.txt
 
 #### Basic container image
 
-This section describes how to use EulerPublisher to publish a multi-platform (AMD64 and ARM64) OpenEuler container image (which is different from  application images, such as AI container images). This function can be  used by EulerPublisher to obtain container images from OpenEuler,  customize them twice, and publish them to third-party repositories, and  the tags of the image products strictly comply with the oEEP-0005  specification.
+This section describes how to use EulerPublisher to publish a multi-platform (AMD64 and ARM64) openEuler container image (which is different from  application images, such as AI container images). This function can be  used by EulerPublisher to obtain container images from openEuler,  customize them twice, and publish them to third-party repositories, and  the tags of the image products strictly comply with the oEEP-0005  specification.
 
 - **Step 1: Obtain the necessary files to build the base image**  
 
@@ -58,7 +58,7 @@ This section describes how to use EulerPublisher to publish a multi-platform (AM
 eulerpublisher container base prepare --version {VERSION} --index {INDEX}
 ```
 
-This command `--version` must be explicitly specified to get the files required for the build for the corresponding version. `--index` Specify the path of the official image, `docker_img` select `docker_img/update/Y-M-D` or select to indicate `docker_img` the `release` version of OpenEuler, select to indicate to obtain the `update` version, `docker_img/update/Y-M-D` and obtain the `release` version by default if not explicitly specified.
+This command `--version` must be explicitly specified to get the files required for the build for the corresponding version. `--index` Specify the path of the official image, `docker_img` select `docker_img/update/Y-M-D` or select to indicate `docker_img` the `release` version of openEuler, select to indicate to obtain the `update` version, `docker_img/update/Y-M-D` and obtain the `release` version by default if not explicitly specified.
 
 - **Step 2: Build and push the image to the target repository** 
 
@@ -96,10 +96,10 @@ This command is a sequential function set of steps 1~2 above, and each  paramete
 
 ```
 Example：
-eulerpublisher container base publish --repo openeuler/openeuler --version 22.03-LTS-SP1 --registry registry-1.docker.io --dockerfile Dockerfile
+eulerpublisher container base publish --repo openeuler/openeuler --version 24.03-LTS-SP2 --registry registry-1.docker.io --dockerfile Dockerfile
 ```
 
-The effect of the above execution is to release the OpenEuler basic container image that `Dockerfile` `22.03-LTS-SP1` supports arm64 and AMD64 platforms to the `openeuler/openeuler` repository of Dockerhub (https://hub.docker.com).
+The effect of the above execution is to release the openEuler basic container image that `Dockerfile` `24.03-LTS-SP2` supports arm64 and AMD64 platforms to the `openeuler/openeuler` repository of Dockerhub (https://hub.docker.com).
 
 To publish an image to multiple repositories at the same time, run the following command: 
 

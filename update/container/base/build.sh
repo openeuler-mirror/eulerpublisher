@@ -23,8 +23,6 @@ set -e
 VERSIONS=(
     "20.03-LTS-SP4"
     "22.03-LTS"
-    "22.03-LTS-SP1"
-    "22.03-LTS-SP2"
     "22.03-LTS-SP3"
     "22.03-LTS-SP4"
     "24.03-LTS"

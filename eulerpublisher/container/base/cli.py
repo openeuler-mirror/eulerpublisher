@@ -24,7 +24,7 @@ def group():
     "--version",
     required=True,
     help="The version of container image, "
-        "such as 22.03-LTS, 22.03-LTS-SP1, etc.",
+        "such as 22.03-LTS, 24.03-LTS-SP2, etc.",
 )
 @click.option(
     "-i",
@@ -59,7 +59,7 @@ def prepare(version, index):
     "--tag",
     required=True,
     help="The tag of base container image, "
-        "such as 22.03-LTS, 22.03-LTS-SP1, etc.",
+        "such as 22.03-LTS, 24.03-LTS-SP2, etc.",
 )
 def check(script, tag):
     obj = OePublisher()
@@ -84,7 +84,7 @@ def check(script, tag):
     "--version",
     required=True,
     help="The version of container image, "
-        "such as 22.03-LTS, 22.03-LTS-SP1, etc."
+        "such as 22.03-LTS, 24.03-LTS-SP2, etc."
 )
 @click.option(
     "-g",
@@ -130,7 +130,7 @@ def push(repo, version, registry, dockerfile):
     "--version",
     required=True,
     help="The version of container image, " 
-        "such as 22.03-LTS, 22.03-LTS-SP1, etc.",
+        "such as 22.03-LTS, 24.03-LTS-SP2, etc.",
 )
 @click.option(
     "-g",
