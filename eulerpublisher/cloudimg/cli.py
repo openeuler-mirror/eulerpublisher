@@ -14,7 +14,7 @@ def group():
     "-v",
     "--version",
     required=True,
-    help="The version of cloud image, " "such as 22.03-LTS, 22.03-LTS-SP1, etc."
+    help="The version of cloud image, " "such as 22.03-LTS, 24.03-LTS-SP2, etc."
 )
 @click.option(
     "-a",
@@ -38,7 +38,7 @@ def prepare(version, arch):
     "-v",
     "--version",
     required=True,
-    help="The version of cloud image, " "such as 22.03-LTS, 22.03-LTS-SP1, etc."
+    help="The version of cloud image, " "such as 22.03-LTS, 24.03-LTS-SP2, etc."
 )
 @click.option(
     "-a",
@@ -62,7 +62,7 @@ def build(target, version, arch, rpmlist):
     "-v",
     "--version",
     required=True,
-    help="The version of cloud image, " "such as 22.03-LTS, 22.03-LTS-SP1, etc."
+    help="The version of cloud image, " "such as 22.03-LTS, 24.03-LTS-SP2, etc."
 )
 @click.option(
     "-a",

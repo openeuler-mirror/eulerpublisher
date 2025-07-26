@@ -155,9 +155,9 @@ eulerpublisher container base publish -p {REPO} -v {VERSION} -i {INDEX} -g {REGI
 此命令是上述**步骤**1～2的顺序功能集合，每个参数的含义与上述相同。使用示例如下
 ```
 示例：
-eulerpublisher container base publish -p openeuler/openeuler -v 22.03-LTS-SP1 -g registry-1.docker.io -f Dockerfile
+eulerpublisher container base publish -p openeuler/openeuler -v 24.03-LTS-SP2 -g registry-1.docker.io -f Dockerfile
 ```
-上述执行的效果是向Docker Hub([https://hub.docker.com](https://hub.docker.com))的`openeuler/openeuler`仓库发布由`Dockerfile`定制的tag为`22.03-LTS-SP1`的支持arm64、amd64多平台的openeuler基础容器镜像。
+上述执行的效果是向Docker Hub([https://hub.docker.com](https://hub.docker.com))的`openeuler/openeuler`仓库发布由`Dockerfile`定制的tag为`24.03-LTS-SP2`的支持arm64、amd64多平台的openeuler基础容器镜像。
 
 为了方便将一个镜像同时发布到多个仓库，可使用如下命令：
 ```
