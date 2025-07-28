@@ -23,6 +23,16 @@ for path in paths:
         EP_PATH = path
         break
 
+AVAILABLE_ARCHES = {
+    "x86_64": "amd64",
+    "aarch64": "arm64",
+    "loongarch64": "loong64"
+}
+
+DEFAULT_APP_ARCHES = {
+    "x86_64": "amd64",
+    "aarch64": "arm64"
+}
 
 class Logger:
     def __init__(self, name="eulerpublisher", level=logging.INFO):

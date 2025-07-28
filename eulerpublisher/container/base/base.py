@@ -10,19 +10,13 @@ import yaml
 
 import eulerpublisher.publisher.publisher as pb
 from eulerpublisher.publisher import EP_PATH, OPENEULER_DOCKERFILE, logger
-from eulerpublisher.publisher import OPENEULER_REPO
+from eulerpublisher.publisher import OPENEULER_REPO, AVAILABLE_ARCHES
 
 CACHE_DATA_PATH = "/tmp/eulerpublisher/container/base/"
 DOCKERFILE_PATH = EP_PATH + "config/container/base/Dockerfile"
 TAGS = EP_PATH + "config/container/base/tags.yaml"
 DEFAULT_REGISTRY = EP_PATH + "config/container/base/registry.yaml"
 TESTCASE_PATH = EP_PATH + "tests/container/base/openeuler_test.sh"
-BASE_ARCHS = {
-    "x86_64": "amd64", 
-    "aarch64": "arm64",
-    "loongarch64": "loong64"
-}
-
 
 # tag image
 def _get_tags(repository, version, multi):
@@ -110,7 +104,7 @@ class OePublisher(pb.Publisher):
         os.chdir(self.version)
 
         # get rootfs for all arches
-        for arch, platform in BASE_ARCHS.items():
+        for arch, platform in AVAILABLE_ARCHES.items():
             # download base images
             index = (
                 "openEuler-"

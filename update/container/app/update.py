@@ -1,6 +1,5 @@
 # coding=utf-8
 import argparse
-import click
 import json
 import requests
 import subprocess
@@ -8,75 +7,19 @@ import shutil
 import sys
 import os
 import platform
-import re
-import yaml
 
-from packaging.version import parse, InvalidVersion
-from prettytable import PrettyTable
-from eulerpublisher.publisher import logger
+from eulerpublisher.publisher import logger, DEFAULT_APP_ARCHES, AVAILABLE_ARCHES
+import format
 
-DEFAULT_WORKDIR = "/tmp/eulerpublisher/ci/container/"
 REPOSITORY_REQUEST_URL = (
     "https://gitee.com/api/v5/repos/openeuler/openeuler-docker-images/pulls/"
 )
-DOCKERFILE_PATH_DEPTH = 3
 MAX_REQUEST_COUNT = 20
 SUCCESS_CODE = 200
 TEST_NAMESPACE = "openeulertest"
 OFFICIAL_NAMESPACE = "openeuler"
-IMAGE_DOC_FILES = ["logo", "image-info"]
+DEFAULT_WORKDIR = "/tmp/eulerpublisher/ci/container/"
 
-CHECK_PATH_HEADER = [
-    "Image Name",
-    "File Path",
-    "Path Check Result"
-]
-IMAGE_SPECIFICATION_HEADER = [
-    "Image Name",
-    "Check Item",
-    "Check Result"
-]
-IMAGE_INFO_HEADER = [
-    "Image Name",
-    "Image-info Item",
-    "Format Check Result"
-]
-IMAGE_INFO_ATTR = [
-    "name",
-    "category",
-    "description",
-    "license",
-    "similar_packages",
-    "dependency",
-    "environment: |",
-    "tags: |",
-    "download: |",
-    "usage: |",
-]
-IMAGE_EXTENSIONS = [
-    ".jpeg",
-    ".jpg",
-    ".png",
-    ".gif",
-    ".bmp",
-    ".tiff",
-    ".tif",
-    ".webp",
-    ".svg",
-    ".heif",
-    ".heic",
-]
-# {0} indicates the image path prefix.
-FILE_PATH_FORMAT = {
-    "README": "{0}/README.md",
-    "picture": "{0}/doc/picture",
-    "logo": "{0}/doc/picture/{1}",
-    "meta": "{0}/meta.yml",
-    "doc": "{0}/doc",
-    "image-info": "{0}/doc/image-info.yml",
-    "Dockerfile": "{0}/{1}/{2}/Dockerfile",
-    "Distrofile": "{0}/{1}/{2}/Distrofile"
-}
 
 def _request(method: str, url: str, body=None, timeout=MAX_REQUEST_COUNT):
     # support only `get` and `post`
@@ -104,335 +47,33 @@ def _request(method: str, url: str, body=None, timeout=MAX_REQUEST_COUNT):
         return None
     return response
 
-# transform openEuler version into specifical format
-# e.g., 22.03-lts-sp3 -> oe2203sp3
-def _transform_version_format(os_version: str):
-    # check if os_version has substring "-sp"
-    if "-sp" in os_version:
-        # delete "lts" in os_version
-        os_version = os_version.replace("lts", "")
-    # delete all "." and "-"
-    ret = os_version.replace(".", "").replace("-", "")
 
-    return ret
-
-# see README for details
-def parse_image_directory(file: str):
-    """
-    Parse and return the image directory based on the given file path.
-    """
-    if len(file.split("/")) == 1:
-        return ""
-
-    # Default application directory is the first segment in the file path.
-    image_dir = file.split("/")[0]
-    image_list_yaml = os.path.join(image_dir, "image-list.yml")
-    if not os.path.exists(image_list_yaml):
-        return image_dir
-
-    # Load the image-list.yml file
-    with open(image_list_yaml, "r", encoding="utf-8") as f:
-        image_list = yaml.safe_load(f)
-    if not image_list:
-        return image_dir
-    # Validate that each image path ends with it's corresponding name
-    images = image_list.get("images", [])
-    for key, value in images.items():
-        if value.endswith(key):
-            continue
-        raise ValueError(f"Image path does not end with {key}.")
-
-    # Other files do not need to be checked, return empty.
-    file_type = os.path.basename(file).split(".")[0]
-    if file_type not in FILE_PATH_FORMAT:
-        return ""
-
-    # Check if the file path matches any of the image paths in the YAML file
-    for key, value in images.items():
-        prefix_path = image_dir + "/" + value.rstrip("/") + "/"
-        if not file.startswith(prefix_path):
-            continue
-        suffix_path = file.replace(prefix_path, "")
-        suffix_len = len(suffix_path.split("/"))
-        format_path = FILE_PATH_FORMAT[file_type]
-        format_len = len(format_path.split("/"))
-        if suffix_len != format_len - 1:
-            continue
-        return prefix_path.rstrip("/")
-    return image_dir
-
-
-def _parse_info_default(file: str, image_dir: str):
-    """
-    Parse application information from the `Dockerfile` or `Distrofile` path.
-
-    `{app-version}/{os-version}/Dockerfile`
-    `{app-version}/{os-version}/Distrofile`
-    """
-    # Validate the `Dockerfile` or `Distrofile` path structure.
-    image_dir = image_dir.rstrip("/") + "/"
-    context_path = file.replace(image_dir, "")
-    if len(context_path.split("/")) != DOCKERFILE_PATH_DEPTH:
-        raise Exception(
-            f"Failed to check file path: {file}, "
-            "the correct `Dockerfile` or `Distrofile` path should be "
-            "{image-version}/{os-version}/Dockerfile or "
-            "{image-version}/{os-version}/Distrofile"
-        )
-
-    # Extract base OS version, app version, and app name.
-    os_version_path = os.path.dirname(file)
-    os_version = os.path.basename(os_version_path)
-
-    image_version_path = os.path.dirname(os_version_path)
-    image_version = os.path.basename(image_version_path)
-
-    image_path = os.path.dirname(image_version_path)
-    image_name = os.path.basename(image_path)
-    return os_version, image_version, image_name
-
-
-# parse meta.yml and get the tags && building platforms
-def _parse_meta_yml(file: str, image_dir: str):
-    tag = {
-        'tag': "",
-        'latest': "False"
-    }
-    arch = ""
-    tags = []
-    meta = os.path.join(image_dir, "meta.yml")
-    # meta = image_dir + "/meta.yml"
-    if os.path.exists(meta):
-        with open(meta, "r") as f:
-            tags = yaml.safe_load(f)
-        try:
-            if not isinstance(tags, dict):
-                raise Exception(f"Format error: {meta}")
-            for key in tags:
-                dockerfile = image_dir + "/" + tags[key]['path']
-                if dockerfile != file:
-                    continue
-                tag['tag'] = key
-                if 'arch' in tags[key]:
-                    arch = tags[key]['arch']
-                break
-        except yaml.YAMLError as e:
-            raise logger.error(f"Error in YAML file : {file} : {e}")
-
-    # generate the default tag
-    os_version, image_version, image_name = (
-        _parse_info_default(file=file, image_dir=image_dir)
-    )
-    if not tag['tag']:
-        tag['tag'] = re.sub(r'\D', '.', image_version) + \
-                     "-oe" + _transform_version_format(os_version)
-    # check if the tag is the latest
-    tag['latest'] = is_latest(tag['tag'], tags)
-    return image_name, tag, arch
-
-def is_latest(current_tag, published_tags):
-    if not published_tags:
-        return "True"
-    try:
-        published_versions = [parse(s.split('-')[0]) for s in published_tags]
-        current_version = parse(current_tag.split('-')[0])
-        if not published_versions:
-            return "True"
-        elif current_version >= max(published_versions):
-            return "True"
-        return "False"
-    except InvalidVersion:
-        return "True"
-
-def _push_readme(file: str, namespace: str, image: str):
+def _push_readme(file: str, namespace: str, image_dir: str):
     current = os.path.dirname(os.path.abspath(__file__))
     script = os.path.abspath(os.path.join(current, '../pushrm/pushrm.sh'))
     os.chmod(script, 0o755)
     try:
         subprocess.run(
-            [script, file, namespace, image],
+            [script, file, namespace, image_dir.split("/")[-1]],
             env={**os.environ, 'APIKEY__QUAY_IO': os.environ.get("DOCKER_QUAY_APIKEY", "")}
         )
+        return True
     except subprocess.CalledProcessError as err:
         logger.error(f"{err}")
+    return False
 
-
-def _check_document(self):
-    result, table = 0, PrettyTable(field_names=IMAGE_SPECIFICATION_HEADER)
-
-    image_dirs = []
-    for change_file in self.change_files:
-        if not os.path.exists(change_file):
-            continue
-        image_dir = parse_image_directory(change_file)
-        image_dirs.append(image_dir)
-
-    image_dirs = list(filter(
-        _filter_doc_images,
-        image_dirs
-    ))
-
-    for image_dir in set(image_dirs):
-        if _check_image_info(image_dir, table):
-            result = 1
-    print(table)
-    return result
-
-
-def _filter_doc_images(image_dir: str):
-    doc_path = FILE_PATH_FORMAT["doc"].format(image_dir)
-    if not os.path.exists(doc_path):
-        return False
-    info_path = FILE_PATH_FORMAT["image-info"].format(image_dir)
-    if not os.path.exists(info_path):
-        return False
-    with open(info_path, "r") as f:
-        image_info = yaml.safe_load(f)
-    if "show-on-appstore" not in image_info:
-        return True
-    return image_info["show-on-appstore"]
-
-
-def _check_image_info(image_dir, table):
-    # check the image-info.yml file
-    image_path = FILE_PATH_FORMAT["image-info"].format(image_dir)
-    info_exists = os.path.exists(image_path)
-    table.add_row(
-        [
-            image_dir,
-            image_path,
-            click.style(
-                "pass" if info_exists else "The image information file does not exist!",
-                fg="green" if info_exists else "red",
-            ),
-        ]
-    )
-    # check the image logo
-    logo_list, logo_exists = [], False
-    logo_path = FILE_PATH_FORMAT["picture"].format(image_dir)
-    if os.path.exists(logo_path):
-        logo_list = os.listdir(logo_path)
-    for key in IMAGE_EXTENSIONS:
-        for picture in logo_list:
-            if not picture.endswith(key):
-                logo_exists = True
-                break
-    table.add_row(
-        [
-            image_dir,
-            f"{image_dir}/doc/picture/*",
-            click.style(
-                "pass" if logo_exists else "The image logo does not exist!",
-                "green" if logo_exists else "red"
-            ),
-        ]
-    )
-    return 0 if logo_exists and info_exists else 1
-
-
-# Check if the required files exist, contains these files in the FILE_PATH_FORMAT
-def _check_file_path(self):
-    result, table = 0, PrettyTable(field_names=CHECK_PATH_HEADER)
-    for file in self.change_files:
-        if not os.path.exists(file):
-            continue
-
-        contents = file.split("/")
-        name = contents[-1].split(".")[0]
-        if name not in FILE_PATH_FORMAT:
-            continue
-        # Dockerfile or Distrofile does not need to be checked.
-        if name == "Dockerfile" or name == "Distrofile":
-            continue
-
-        # check file under image directory
-        image_dir = parse_image_directory(file)
-        if not file.startswith(image_dir):
-            continue
-        # check all files exclude Dockerfile and Distrofile
-        file_path = FILE_PATH_FORMAT[name].format(
-            image_dir, contents[-1]
-        )
-        path_error = (
-                os.path.exists(image_dir)
-                and not os.path.exists(file_path)
-        )
-        if path_error:
-            result = 1
-        table.add_row(
-            [
-                image_dir,
-                file,
-                click.style(
-                    "failed" if path_error else "pass",
-                    fg="red" if path_error else "green",
-                ),
-            ]
-        )
-    print(table)
-    return result
-
-
-# Check that the format of each attribute in the image-info.yml is correct
-def _check_image_content(self):
-    result, table = 0, PrettyTable(field_names=IMAGE_INFO_HEADER)
-    image_files = filter(
-        lambda f: f.endswith("image-info.yml"),
-        self.change_files
-    )
-
-    for file in image_files:
-        if not os.path.exists(file):
-            continue
-        image_dir = parse_image_directory(file)
-        if not file.startswith(image_dir):
-            continue
-        try:
-            with open(file, "r") as f:
-                yaml.safe_load(f)
-                f.seek(0)
-                lines = f.readlines()
-            image = image_dir.split("/")[-1]
-            if not _check_key_exist(table, lines, image):
-                continue
-            result = 1
-        except yaml.YAMLError as e:
-            raise e
-    print(table)
-    return result
-
-
-# Check if the required attributes exist, contains these attributes in the IMAGE_INFO_ATTR
-def _check_key_exist(table, lines, image):
-    result, attr_names = 0, list(
-        map(
-            lambda line: line if line.endswith(": |") else line.split(":")[0],
-            list(map(lambda line: line.rstrip(), lines)),
-        )
-    )
-    for key in IMAGE_INFO_ATTR:
-        if key not in attr_names:
-            result = 1
-        msg = "pass" if key in attr_names else "failed"
-        color = "green" if key in attr_names else "red"
-        table.add_row([
-            image,
-            re.sub(r"[ :|]", "", key),
-            click.style(msg, fg=color)
-        ])
-    return result
 
 def _check_app_image(file: str):
     # build and push multi-platform image to `openeulertest`
-    image_dir = parse_image_directory(file)
-    name, tag, arch = _parse_meta_yml(file=file, image_dir=image_dir)
-    
+    image_dir = format.parse_image_directory(file)
+    name, tag, arch = format.parse_meta_yml(file=file, image_dir=image_dir)
+
     # To denote different arches
     local_arch = platform.machine()
     test_tag = tag['tag'] + f"-{local_arch}"
     
     # each CI node only build the same-arch image
-    if not arch or local_arch == arch:
+    if not arch or local_arch in arch:
         if subprocess.call([
             "eulerpublisher",
             "container",
@@ -457,11 +98,12 @@ def _check_app_image(file: str):
         ]) != 0:
             return 1
     return 0
-    
+
+
 def _check_distroless_image(file: str):
     # build and push distroless image to `openeulertest`
-    image_dir = parse_image_directory(file)
-    name, tag, arch = _parse_meta_yml(file=file, image_dir=image_dir)
+    image_dir = format.parse_image_directory(file)
+    name, tag, arch = format.parse_meta_yml(file=file, image_dir=image_dir)
     if subprocess.call([
         "eulerpublisher",
         "container",
@@ -474,17 +116,22 @@ def _check_distroless_image(file: str):
         return 1
     return 0
 
+
 def _publish_app_image(file: str, image_dir: str):
     # build and push multi-platform image to `openeuler`
-    name, tag, arch = _parse_meta_yml(file=file, image_dir=image_dir)
+    name, tag, arch = format.parse_meta_yml(file=file, image_dir=image_dir)
     # multiple single-arch images are denoted by different arch suffixs
     verified_tags = []
-    if not arch:
-        verified_tags.append(f"docker.io/{TEST_NAMESPACE}/{name}:{tag['tag']}-x86_64")
-        verified_tags.append(f"docker.io/{TEST_NAMESPACE}/{name}:{tag['tag']}-aarch64")
+    registry_tag = f"docker.io/{TEST_NAMESPACE}/{name}:{tag['tag']}"
+
+    if arch:
+        arches = arch.replace(" ", "").split(",")
     else:
-        verified_tags.append(f"docker.io/{TEST_NAMESPACE}/{name}:{tag['tag']}-{arch}")
-    
+        arches = DEFAULT_APP_ARCHES.keys()
+
+    for specify_arch in arches:
+        verified_tags.append(f"{registry_tag}-{specify_arch}")
+
     full_tag = f"{name}:{tag['tag']}"
     success = True
     if subprocess.call([
@@ -503,9 +150,10 @@ def _publish_app_image(file: str, image_dir: str):
         success = False
     return full_tag, success
 
+
 def _publish_distroless_image(file: str, image_dir: str):
     # build and push distroless image to `openeuler`
-    name, tag, arch = _parse_meta_yml(file=file, image_dir=image_dir)
+    name, tag, arch = format.parse_meta_yml(file=file, image_dir=image_dir)
     full_tag = f"{name}:{tag['tag']}"
     success = True
     if subprocess.call([
@@ -574,15 +222,18 @@ class ContainerVerification:
             return 1
         logger.info(f"Clone {s_repourl} successfully.")
         return 0
-    
-    def comment_publish_result(self, status):
-        head = "<tr><th colspan=2>Image Tag</th> <th>Publish Result</th></tr>"
+
+    def comment_publish_result(self, columns, status):
+        head = "<tr>" + " ".join(f"<th>{column}</th>" for column in columns) + "</tr>"
         body = ""
         for tag, success in status.items():
             result = ":white_check_mark:SUCCESS"
             if not success:
                 result = ":x:FAILED"
             body += f"<tr><th colspan=2>{tag}</th> <th>{result}</th></tr>"
+        return self.post_comment_to_pr(head, body)
+
+    def post_comment_to_pr(self, head, body):
         # all publish results
         comment = "<table>" + head + body + "</table>"
         # post comment
@@ -609,58 +260,39 @@ class ContainerVerification:
             else:
                 continue
         return 0
-    
+
     def check_code(self):
+        """
+        Image release compliance check, see README.md for details.
+        """
         os.chdir(self.workdir)
-        # Check the file list in the image directory
-        path_check_result = _check_file_path(self)
+        head, body, fail_count = format.check_report(self.change_files)
 
-        # list total check results items
-        check_result = 0
-        if path_check_result:
-            logger.error("There are some wrong file paths in this PR."
-                " The file path check results of the related images are as above.")
-            check_result = 1
-        else:
-            logger.info("The file paths check in this PR has passed.")
+        if fail_count:
+            logger.error("There are some specification errors for releasing "
+                         "on appstore in this PR, please check as above.")
+            self.post_comment_to_pr(head, body)
+            return 1
+        logger.info("The image specification check for releasing on appstore has passed.")
+        return 0
 
-        # Check the content format for image-info.yml
-        content_check_result = _check_image_content(self)
-        if content_check_result:
-            logger.error(
-                "There are some format errors in `image-info.yml`, "
-                "please check as above."
-            )
-            check_result = 1
-        else:
-            logger.info("The image-info.yml file content format check has passed.")
-
-        # Check image specifications for releasing on appstore
-        document_check_result = _check_document(self)
-        if document_check_result:
-            logger.error(
-                "There are some specification errors for "
-                "releasing on appstore in this PR, please check as above."
-            )
-            check_result = 1
-        else:
-            logger.info("The image specification check for releasing on appstore has passed.")
-        return check_result
 
     def publish_updates(self):
         os.chdir(self.workdir)
         status = {}
+        columns = []
         for file in self.change_files:
             if not os.path.exists(file):
                 logger.info(f"The file: {file} is deleted, no need to publish.")
                 continue
             # update readme while changed file is README.md
-            image_dir = parse_image_directory(file)
-            image = image_dir.split("/")[-1]
+            image_dir = format.parse_image_directory(file)
+            columns = ["Image Tag", "Publish Result"]
             if os.path.basename(file) == "README.md":
-                _push_readme(file=file, namespace="openeuler", image=image)
-                continue
-            if os.path.basename(file) == "Dockerfile":
+                columns = ["Image Readme", "Publish Result"]
+                success = _push_readme(file=file, namespace="openeuler", image_dir=image_dir)
+                status[file] = success
+            elif os.path.basename(file) == "Dockerfile":
                 full_tag, success = _publish_app_image(file=file, image_dir=image_dir)
                 status[full_tag] = success
             elif os.path.basename(file) == "Distrofile":
@@ -668,7 +300,7 @@ class ContainerVerification:
                 status[full_tag] = success
             else:
                 continue
-        self.comment_publish_result(status)
+        self.comment_publish_result(columns, status)
         if False in status.values():
             return 1
         return 0
