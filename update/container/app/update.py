@@ -230,7 +230,7 @@ class ContainerVerification:
             result = ":white_check_mark:SUCCESS"
             if not success:
                 result = ":x:FAILED"
-            body += f"<tr><th colspan=2>{tag}</th> <th>{result}</th></tr>"
+            body += f"<tr><th>{tag}</th> <th>{result}</th></tr>"
         return self.post_comment_to_pr(head, body)
 
     def post_comment_to_pr(self, head, body):
