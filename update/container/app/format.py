@@ -21,15 +21,16 @@ DOC_FILES_PATH_FORMAT = {
 }
 
 # parse meta.yml and get the tags && building platforms
-def parse_meta_yml(file: str, image_dir: str):
+def parse_meta_yml(file: str):
     tag = {
         'tag': "",
         'latest': "False"
     }
     arch = ""
     tags = []
-    meta = os.path.join(image_dir, "meta.yml")
-    # meta = image_dir + "/meta.yml"
+    name, prefix = parse_image_prefix(file)
+    meta = os.path.join(prefix, "meta.yml")
+    # meta = prefix + "/meta.yml"
     if os.path.exists(meta):
         with open(meta, "r") as f:
             tags = yaml.safe_load(f)
@@ -37,7 +38,7 @@ def parse_meta_yml(file: str, image_dir: str):
             if not isinstance(tags, dict):
                 raise Exception(f"Format error: {meta}")
             for key in tags:
-                dockerfile = image_dir + "/" + tags[key]['path']
+                dockerfile = prefix + "/" + tags[key]['path']
                 if dockerfile != file:
                     continue
                 tag['tag'] = key
@@ -48,15 +49,13 @@ def parse_meta_yml(file: str, image_dir: str):
             raise logger.error(f"Error in YAML file : {file} : {e}")
 
     # generate the default tag
-    os_version, image_version, image_name = (
-        _parse_image_info(file=file, image_dir=image_dir)
-    )
+    os_version, image_version = _parse_image_info(file=file, prefix=prefix)
     if not tag['tag']:
         tag['tag'] = re.sub(r'\D', '.', image_version) + \
                      "-oe" + _transform_version_format(os_version)
     # check if the tag is the latest
     tag['latest'] = _is_latest(tag['tag'], tags)
-    return image_name, tag, arch
+    return name, tag, arch
 
 
 def _is_latest(current_tag, published_tags):
@@ -87,7 +86,7 @@ def _transform_version_format(os_version: str):
     return ret
 
 
-def _parse_image_info(file: str, image_dir: str):
+def _parse_image_info(file: str, prefix: str):
     """
     Parse application information from the `Dockerfile` or `Distrofile` path.
 
@@ -95,8 +94,8 @@ def _parse_image_info(file: str, image_dir: str):
     `{app-version}/{os-version}/Distrofile`
     """
     # Check the `Dockerfile` or `Distrofile` path structure.
-    image_dir = image_dir.rstrip("/") + "/"
-    context_path = file.replace(image_dir, "")
+    prefix = prefix.rstrip("/") + "/"
+    context_path = file.replace(prefix, "")
     if len(context_path.split("/")) != DOCKERFILE_PATH_DEPTH:
         raise Exception(
             f"Failed to check file path: {file}, "
@@ -112,19 +111,17 @@ def _parse_image_info(file: str, image_dir: str):
     image_version_path = os.path.dirname(os_version_path)
     image_version = os.path.basename(image_version_path)
 
-    image_path = os.path.dirname(image_version_path)
-    image_name = os.path.basename(image_path)
-    return os_version, image_version, image_name
+    return os_version, image_version
 
 
 # see README for details
-def parse_image_directory(file=""):
+def parse_image_prefix(file=""):
     """
     Parse and return the image directory based on the given file path.
     """
     contents = file.split("/")
     if len(contents) == 1:
-        return ""
+        return "", ""
 
     # {0} - image path prefix (e.g., AI/opea).
     # {1} - application version (e.g., 1.0.0)
@@ -137,34 +134,27 @@ def parse_image_directory(file=""):
     # Other files do not need to be checked, return empty.
     basename = contents[-1].split(".")[0]
     if basename not in DOC_FILES_PATH_FORMAT and basename not in DOCKER_BUILD_FILE_FORMAT:
-        return ""
+        return "", ""
 
     # Default application directory is the first segment in the file path.
-    image_dir = contents[0]
-    image_list_yaml = os.path.join(image_dir, "image-list.yml")
+    prefix = contents[0]
+    image_list_yaml = os.path.join(prefix, "image-list.yml")
     if not os.path.exists(image_list_yaml):
-        return image_dir
+        return prefix, prefix
 
     # Load the image-list.yml file
     with open(image_list_yaml, "r", encoding="utf-8") as f:
         image_list = yaml.safe_load(f)
 
-    # Check that each image path ends with it's corresponding name
+    # Check if the file path matches any of the image paths in the YAML file
     images = image_list.get("images", [])
     for key, value in images.items():
-        if value.endswith(key):
-            continue
-        raise ValueError(f"Image path does not end with {key}.")
-
-    # Check if the file path matches any of the image paths in the YAML file
-    for key, value in images.items():
-        image_name = value.split("/")[-1]
-        if image_name in contents:
-            return image_dir + "/" + value.rstrip("/")
+        if all(part in contents for part in value.split("/")):
+            return key, prefix + "/" + value.rstrip("/")
 
     raise ValueError(
         f"Missing required image root directory for multi-scene processing.\n"
-        f"Required action: Specify the image root directory in {image_dir}/image-list.yml.\n"
+        f"Required action: Specify the image root directory in {prefix}/image-list.yml.\n"
         f"File: {file}"
     )
 
@@ -174,7 +164,7 @@ def check_report(change_files: []):
     Minimum Directory Description:
     https://gitee.com/openeuler/openeuler-docker-images/blob/master/README.en.md#22-minimum-directory
     """
-    image_roots = []
+    prefixes = []
     rows = []
     fail_count = 0
 
@@ -191,23 +181,23 @@ def check_report(change_files: []):
         if not os.path.exists(change_file) or file_type not in DOC_FILES_PATH_FORMAT:
             continue
 
-        image_root = parse_image_directory(change_file)
-        image_roots.append(image_root)
+        _, prefix = parse_image_prefix(change_file)
+        prefixes.append(prefix)
 
         # Validate the file path format
         success, description = _check_all_file_paths(change_file)
         fail_count = _append_result(change_file, success, description, rows, table, fail_count)
 
     # Step 2: Check required documentation files (logo and image-info)
-    image_roots = list(set(filter(_need_to_check_doc, image_roots)))
-    for image_root in image_roots:
+    prefixes = list(set(filter(_need_to_check_doc, prefixes)))
+    for prefix in prefixes:
 
         # Check that logo file exists and is valid
-        logo, success, description = _check_image_logo_exist(image_root)
+        logo, success, description = _check_image_logo_exist(prefix)
         fail_count = _append_result(logo, success, description, rows, table, fail_count)
 
         # Check that image-info.yml file exists and passes format checks
-        image_info, success, description = _check_image_info(image_root)
+        image_info, success, description = _check_image_info(prefix)
         fail_count = _append_result(image_info, success, description, rows, table, fail_count)
 
     print(table)
@@ -250,9 +240,9 @@ def _check_all_file_paths(change_file):
     contents = change_file.split("/")
     type = contents[-1].split(".")[0]
 
-    image_dir = parse_image_directory(change_file)
+    _, prefix = parse_image_prefix(change_file)
     correct_path = DOC_FILES_PATH_FORMAT[type].format(
-        image_dir, contents[-1]
+        prefix, contents[-1]
     )
     if not os.path.exists(correct_path):
         return False, f"[Path Error] The expected path should be {correct_path}"
@@ -280,15 +270,15 @@ def _need_to_check_doc(image_root=""):
     return image_info["show-on-appstore"]
 
 
-def _check_image_logo_exist(image_root):
+def _check_image_logo_exist(prefix):
     """
     The standard path for the image logo is {image-prefix}/picture/logo.*
     """
     PICTURE_EXTENSIONS = [".jpeg", ".jpg", ".png", ".gif",
                           ".bmp", ".tiff", ".tif", ".webp",
                           ".svg", ".heif", ".heic"]
-    picture_path = DOC_FILES_PATH_FORMAT["picture"].format(image_root)
-    logo_path = f"{image_root}/doc/picture/logo.*"
+    picture_path = DOC_FILES_PATH_FORMAT["picture"].format(prefix)
+    logo_path = f"{prefix}/doc/picture/logo.*"
 
     if not os.path.exists(picture_path):
         return logo_path, False, f"[LOGO Missing]"
@@ -301,12 +291,12 @@ def _check_image_logo_exist(image_root):
     return logo_path, False, f"[LOGO] Missing]"
 
 
-def _check_image_info(image_root):
+def _check_image_info(prefix):
     """
     Parses and checks the contents of the 'image-info.yml' file.
     """
     try:
-        image_info = DOC_FILES_PATH_FORMAT["image-info"].format(image_root)
+        image_info = DOC_FILES_PATH_FORMAT["image-info"].format(prefix)
         if not os.path.exists(image_info):
             return image_info, False, f"[Image-info Missing]"
 
