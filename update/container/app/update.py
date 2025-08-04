@@ -8,7 +8,7 @@ import sys
 import os
 import platform
 
-from eulerpublisher.publisher import logger, DEFAULT_APP_ARCHES, AVAILABLE_ARCHES
+from eulerpublisher.publisher import logger, DEFAULT_APP_ARCHES
 import format
 
 REPOSITORY_REQUEST_URL = (
@@ -48,13 +48,14 @@ def _request(method: str, url: str, body=None, timeout=MAX_REQUEST_COUNT):
     return response
 
 
-def _push_readme(file: str, namespace: str, image_dir: str):
+def _push_readme(file: str, namespace: str):
+    name, _ = format.parse_image_prefix(file)
     current = os.path.dirname(os.path.abspath(__file__))
     script = os.path.abspath(os.path.join(current, '../pushrm/pushrm.sh'))
     os.chmod(script, 0o755)
     try:
         subprocess.run(
-            [script, file, namespace, image_dir.split("/")[-1]],
+            [script, file, namespace, name],
             env={**os.environ, 'APIKEY__QUAY_IO': os.environ.get("DOCKER_QUAY_APIKEY", "")}
         )
         return True
@@ -65,8 +66,7 @@ def _push_readme(file: str, namespace: str, image_dir: str):
 
 def _check_app_image(file: str):
     # build and push multi-platform image to `openeulertest`
-    image_dir = format.parse_image_directory(file)
-    name, tag, arch = format.parse_meta_yml(file=file, image_dir=image_dir)
+    name, tag, arch = format.parse_meta_yml(file=file)
 
     # To denote different arches
     local_arch = platform.machine()
@@ -102,8 +102,7 @@ def _check_app_image(file: str):
 
 def _check_distroless_image(file: str):
     # build and push distroless image to `openeulertest`
-    image_dir = format.parse_image_directory(file)
-    name, tag, arch = format.parse_meta_yml(file=file, image_dir=image_dir)
+    name, tag, arch = format.parse_meta_yml(file=file)
     if subprocess.call([
         "eulerpublisher",
         "container",
@@ -117,9 +116,9 @@ def _check_distroless_image(file: str):
     return 0
 
 
-def _publish_app_image(file: str, image_dir: str):
+def _publish_app_image(file: str):
     # build and push multi-platform image to `openeuler`
-    name, tag, arch = format.parse_meta_yml(file=file, image_dir=image_dir)
+    name, tag, arch = format.parse_meta_yml(file=file)
     # multiple single-arch images are denoted by different arch suffixs
     verified_tags = []
     registry_tag = f"docker.io/{TEST_NAMESPACE}/{name}:{tag['tag']}"
@@ -151,9 +150,9 @@ def _publish_app_image(file: str, image_dir: str):
     return full_tag, success
 
 
-def _publish_distroless_image(file: str, image_dir: str):
+def _publish_distroless_image(file: str):
     # build and push distroless image to `openeuler`
-    name, tag, arch = format.parse_meta_yml(file=file, image_dir=image_dir)
+    name, tag, arch = format.parse_meta_yml(file=file)
     full_tag = f"{name}:{tag['tag']}"
     success = True
     if subprocess.call([
@@ -286,17 +285,16 @@ class ContainerVerification:
                 logger.info(f"The file: {file} is deleted, no need to publish.")
                 continue
             # update readme while changed file is README.md
-            image_dir = format.parse_image_directory(file)
             columns = ["Image Tag", "Publish Result"]
             if os.path.basename(file) == "README.md":
                 columns = ["Image Readme", "Publish Result"]
-                success = _push_readme(file=file, namespace="openeuler", image_dir=image_dir)
+                success = _push_readme(file=file, namespace="openeuler")
                 status[file] = success
             elif os.path.basename(file) == "Dockerfile":
-                full_tag, success = _publish_app_image(file=file, image_dir=image_dir)
+                full_tag, success = _publish_app_image(file=file)
                 status[full_tag] = success
             elif os.path.basename(file) == "Distrofile":
-                full_tag, success = _publish_distroless_image(file=file, image_dir=image_dir)
+                full_tag, success = _publish_distroless_image(file=file)
                 status[full_tag] = success
             else:
                 continue
