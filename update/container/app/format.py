@@ -165,8 +165,8 @@ def check_report(change_files: []):
     Minimum Directory Description:
     https://gitee.com/openeuler/openeuler-docker-images/blob/master/README.en.md#22-minimum-directory
     """
-    if (platform.machine() != "x86_64"):
-        return [], 0
+    if platform.machine() != "x86_64":
+        return "", "", 0
 
     prefixes = []
     rows = []
