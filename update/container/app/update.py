@@ -348,13 +348,13 @@ if __name__ == "__main__":
         source_code_url=args.source_code_url,
         source_branch=args.source_branch
     )
- 
+
     if obj.get_change_files():
         sys.exit(1)
     logger.info(f"Difference: {json.dumps(obj.change_files, indent=4)}")
     if obj.pull_source_code():
         sys.exit(1)
-            
+
     # whether to push to `openeuler`
     if args.operation == "push":
         if obj.publish_updates():
