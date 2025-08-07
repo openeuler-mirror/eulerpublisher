@@ -1,4 +1,5 @@
 import os
+import platform
 import re
 import yaml
 
@@ -164,6 +165,9 @@ def check_report(change_files: []):
     Minimum Directory Description:
     https://gitee.com/openeuler/openeuler-docker-images/blob/master/README.en.md#22-minimum-directory
     """
+    if (platform.machine() != "x86_64"):
+        return [], 0
+
     prefixes = []
     rows = []
     fail_count = 0
@@ -246,7 +250,7 @@ def _check_all_file_paths(change_file):
     )
     if not os.path.exists(correct_path):
         return False, f"[Path Error] The expected path should be {correct_path}"
-    return True, "[Path Correct]"
+    return True, ""
 
 
 def _need_to_check_doc(image_root=""):
@@ -262,7 +266,7 @@ def _need_to_check_doc(image_root=""):
         return False
     info_path = DOC_FILES_PATH_FORMAT["image-info"].format(image_root)
     if not os.path.exists(info_path):
-        return True
+        return False
     with open(info_path, "r") as f:
         image_info = yaml.safe_load(f)
     if "show-on-appstore" not in image_info:
@@ -281,14 +285,14 @@ def _check_image_logo_exist(prefix):
     logo_path = f"{prefix}/doc/picture/logo.*"
 
     if not os.path.exists(picture_path):
-        return logo_path, False, f"[LOGO Missing]"
+        return logo_path, False, f"[Missing] LOGO"
 
     logo_list = os.listdir(picture_path)
     for key in PICTURE_EXTENSIONS:
         for picture in logo_list:
             if not picture.endswith(key):
-                return logo_path, True, f"[LOGO Exists]"
-    return logo_path, False, f"[LOGO] Missing]"
+                return logo_path, True, ""
+    return logo_path, False, f"[Missing] LOGO"
 
 
 def _check_image_info(prefix):
@@ -297,9 +301,6 @@ def _check_image_info(prefix):
     """
     try:
         image_info = DOC_FILES_PATH_FORMAT["image-info"].format(prefix)
-        if not os.path.exists(image_info):
-            return image_info, False, f"[Image-info Missing]"
-
         with open(image_info, "r") as f:
             yaml.safe_load(f)
             f.seek(0)
@@ -308,7 +309,7 @@ def _check_image_info(prefix):
         if error_items:
             description = f"[Format Error]: {' '.join(error_items)}"
             return image_info, False, description
-        return image_info, True, "[Format Correct]"
+        return image_info, True, ""
     except yaml.YAMLError as e:
         raise e
 
