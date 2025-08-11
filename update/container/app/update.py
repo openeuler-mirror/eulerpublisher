@@ -233,6 +233,8 @@ class ContainerVerification:
         return self.post_comment_to_pr(head, body)
 
     def post_comment_to_pr(self, head, body):
+        if not body or not head:
+            return 0
         # all publish results
         comment = "<table>" + head + body + "</table>"
         # post comment
