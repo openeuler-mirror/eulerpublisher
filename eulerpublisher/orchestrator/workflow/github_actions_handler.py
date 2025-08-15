@@ -127,6 +127,50 @@ class GithubActionsHandler(WorkflowHandler):
             self.db.update_workflow(id, update_data)
             self.logger.error(f"Failed to generate container workflow: {e}")
 
+        archs = artifact_info["archs"]
+        registries = artifact_info["registries"]
+        repository = artifact_info["repository"]
+        layers = artifact_info["layers"]
+
+        workflow_path = os.path.join(self.repo_dir, ".github", "workflows", "workflow.yml")
+        os.makedirs(os.path.dirname(workflow_path), exist_ok=True)
+        with open(workflow_path, "w") as f:
+            f.write(GITHUB_ACTIONS_HEADER)
+
+        recipe_handler = DockerfileHandler(self.config, self.logger, self.repo_dir)
+
+        tag = None
+        needs = None
+        base = "scratch"
+        for layer in layers:
+            name = layer.get("name")
+            version = layer.get("version")                
+            
+            # special handling for openeuler
+            if name == "openeuler":
+                tag = re.sub(r'\.(?=LTS)|\.(?=SP\d)', '-', version).lower()
+            else:
+                tag = f"{version}-{tag}"    
+                    
+            image = self.db.query_image(
+                            software_name=name, 
+                            version_name=version, 
+                            repository=repository, 
+                            tag=tag)
+            if not image or not set(archs).issubset(set(image["arch"].split(","))):
+                recipe_handler.handle_recipe(name, version, base)
+                self._handle_container_job(registries, repository, name, version, tag, needs, archs)
+                needs = name
+            base = f"{repository}-{name}:{tag}"
+
+            # special handling for openeuler
+            if name == "openeuler":
+                tag = re.sub(r'LTS(?=\.)', '', version)
+                tag = "oe" + re.sub(r'\.', '', tag).lower()
+            else:
+                tag = f"{name}{tag}"
+        self.logger.info("Container workflow generated successfully")
+        
 
     def _handle_container_job(self, registries, repository, name, version, tag, needs, archs):
         self.logger.info(f"Generating job for {name}:{version}...")

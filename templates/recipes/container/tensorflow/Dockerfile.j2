@@ -1,0 +1,10 @@
+ARG BASE={{ base }}
+
+ARG VERSION={{ version }}
+
+FROM ${BASE}
+
+ARG VERSION
+
+RUN pip install --no-cache-dir \
+    tensorflow==${VERSION}

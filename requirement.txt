@@ -9,3 +9,9 @@ gradio==5.23.0
 copr
 flask
 flask-cors
+yaml
+langchain
+langchain-commuinty
+langchain-huggingface
+openai
+pypdf

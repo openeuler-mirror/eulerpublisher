@@ -90,35 +90,35 @@
           {% endfor %}
           echo "timestamp=$(date -u +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
 
-      # - name: Notify status to EulerPublisher
-      #   uses: eferraris/rabbit-sender@v1
-      #   with:
-      #     MESSAGE: |
-      #       {
-      #         "trigger": {
-      #           "type": "Github Actions",
-      #           "timestamp": {% raw %}"${{ env.timestamp }}"{% endraw %}
-      #         },
-      #         "artifact": {
-      #           "type": "container",
-      #           "info": {
-      #             "archs": {{ archs | tojson }},
-      #             "registries": {{ registries | tojson }},
-      #             "repository": "{{ repository }}",
-      #             "name": "{{ name }}",
-      #             "version": "{{ version }}",
-      #             "tag": "{{ tag }}",
-      #             "status": {% raw %}"${{ job.status }}"{% endraw %}
-      #           }
-      #         }
-      #       }
-      #     RABBIT_EXCHANGE_NAME: "eulerpublisher"
-      #     ROUTING_KEY: "tracker"
-      #     RABBIT_HOST: {% raw %}${{ secrets.RABBIT_HOST }}{% endraw %}
-      #     RABBIT_USERNAME: {% raw %}${{ secrets.RABBIT_USERNAME }}{% endraw %}
-      #     RABBIT_PASSWORD: {% raw %}${{ secrets.RABBIT_PASSWORD }}{% endraw %}
-      #     RABBIT_PORT: 5672
-      #     RABBIT_USE_SSL: false
-      #     DURABLE: false
+      - name: Notify status to EulerPublisher
+        uses: eferraris/rabbit-sender@v1
+        with:
+          MESSAGE: |
+            {
+              "trigger": {
+                "type": "Github Actions",
+                "timestamp": {% raw %}"${{ env.timestamp }}"{% endraw %}
+              },
+              "artifact": {
+                "type": "container",
+                "info": {
+                  "archs": {{ archs | tojson }},
+                  "registries": {{ registries | tojson }},
+                  "repository": "{{ repository }}",
+                  "name": "{{ name }}",
+                  "version": "{{ version }}",
+                  "tag": "{{ tag }}",
+                  "status": {% raw %}"${{ job.status }}"{% endraw %}
+               }
+              }
+            }
+          RABBIT_EXCHANGE_NAME: "eulerpublisher"
+          ROUTING_KEY: "tracker"
+          RABBIT_HOST: {% raw %}${{ secrets.RABBIT_HOST }}{% endraw %}
+          RABBIT_USERNAME: {% raw %}${{ secrets.RABBIT_USERNAME }}{% endraw %}
+          RABBIT_PASSWORD: {% raw %}${{ secrets.RABBIT_PASSWORD }}{% endraw %}
+          RABBIT_PORT: 5672
+          RABBIT_USE_SSL: false
+          DURABLE: false
 
 

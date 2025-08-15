@@ -1,0 +1,251 @@
+knowledge:
+#   - name: "openEuler"
+#     versions:
+#       - version: "25.03"
+#       - version: "24.03.LTS.SP1"
+#       - version: "24.03.LTS"
+#       - version: "22.03.LTS.SP1"
+#       - version: "22.03.LTS"
+  - name: "python"
+    versions:
+      - version: "3.8.1"
+      - version: "3.9.1"
+      - version: "3.10.1"
+      - version: "3.11.1"
+      - version: "3.13.3"
+
+  - name: "pytorch"
+    versions:
+      - version: "1.11.0"
+        requires:
+          python: [">=3.7.5", "<=3.10"]
+      - version: "2.1.0"
+        requires:
+          python: [">=3.8", "<=3.11"]
+      - version: "2.2.0"
+        requires:
+          python: [">=3.8", "<=3.10"]
+      - version: "2.3.1"
+        requires:
+          python: [">=3.8", "<=3.11"]
+      - version: "2.4.0"
+        requires:
+          python: [">=3.8", "<=3.11"]
+      - version: "2.4.1"
+        requires:
+          python: [">=3.9", "<=3.12"]
+      - version: "2.5.0"
+        requires:
+          python: [">=3.9", "<=3.12"]
+      - version: "2.6.0"
+        requires:
+          python: [">=3.9", "<=3.13"]
+
+  - name: "cann"
+    versions:
+      - version: "8.2.RC1"
+        requires:
+          pytorch: ["2.6.0", "2.5.1", "2.5.1.post1", "2.1.0,", "2.1.0.post13"]
+      - version: "8.1.RC1"
+        requires:
+          pytorch: ["2.5.1", "2.4.0.post4", "2.4.0", "2.3.1.post6", "2.3.1", "2.1.0.post12", "2.1.0"]
+      - version: "8.1.RC1.alpha002"
+        requires:
+          pytorch: ["2.6.0rc1", "2.6.0"]
+      - version: "8.0.0"
+        requires:
+          pytorch: ["2.4.0.post2", "2.4.0", "2.3.1.post4", "2.3.1", "2.1.0.post10", "2.1.0"]
+      - version: "8.0.RC3"
+        requires:
+          pytorch: ["2.4.0", "2.3.1.post2", "2.3.1", "2.1.0.post8", "2.1.0"]
+      - version: "8.0.RC2"
+        requires:
+          pytorch: ["2.3.1", "2.2.0.post2", "2.2.0", "2.1.0.post6", "2.1.0", "1.11.0.post14", "1.11.0"]
+      - version: "8.0.RC1"
+        requires:
+          pytorch: ["2.2.0", "2.1.0.post4", "2.1.0", "1.11.0.post11", "1.11.0"]
+      - version: "7.0.0"
+        requires:
+          pytorch: ["2.1.0", "2.0.1.post1", "2.0.1", "1.11.0.post8", "1.11.0"]
+      - version: "7.0.RC1"
+        requires:
+          pytorch: ["2.1.0.rc1", "2.1.0", "2.0.1", "1.11.0.post4", "1.11.0"]
+      - version: "6.3.RC3.1"
+        requires:
+          pytorch: ["1.11.0.post3", "1.11.0"]
+      - version: "6.3.RC3"
+        requires:
+          pytorch: ["1.11.0.post2", "1.11.0"]
+      - version: "6.3.RC2"
+        requires:
+          pytorch: ["2.0.1.rc1", "2.0.1", "1.11.0.post1", "1.11.0", "1.8.1.post2", "1.8.1"]
+      - version: "6.3.RC1"
+        requires:
+          pytorch: ["1.11.0", "1.8.1.post1", "1.8.1"]
+      - version: "6.0.1"
+        requires:
+          pytorch: ["1.5.0.post8", "1.5.0", "1.8.1", "1.11.0.rc2", "1.11.0"]
+      - version: "6.0.RC1"
+        requires:
+          pytorch: ["1.5.0.post7", "1.5.0", "1.8.1.rc3", "1.8.1", "1.11.0.rc1", "1.11.0"]
+      - version: "5.1.RC2"
+        requires:
+          pytorch: ["1.5.0.post6", "1.5.0", "1.8.1.rc2", "1.8.1"]
+      - version: "5.1.RC1"
+        requires:
+          pytorch: ["1.5.0.post5", "1.5.0", "1.8.1.rc1", "1.8.1"]
+      - version: "5.0.4"
+        requires:
+          pytorch: ["1.5.0.post4", "1.5.0"]
+      - version: "5.0.3"
+        requires:
+          pytorch: ["1.5.0.post3", "1.8.1"]
+      - version: "5.0.2"
+        requires:
+          pytorch: ["1.5.0.post2", "1.5.0"]
+  
+  - name: "tensorflow"
+    versions:
+      - version: "1.15"
+        requires:
+          python: [">=3.6", "<=3.7"]
+          pip: [">=19.0"]
+      - version: "2.2"
+        requires:
+          python: [">=3.6", "<=3.8"]
+          pip: [">=19.0"]
+      - version: "2.5"
+        requires:
+          python: [">=3.6", "<=3.9"]
+          pip: [">=19.0"]
+
+  - name: "keras"
+    versions:
+      - version: "2.13.0"
+        requires:
+          tensorflow: ["2.13.0"]
+      - version: "2.14.0"
+        requires:
+          tensorflow: ["2.14.0"]
+      - version: "2.15.0"
+        requires:
+          tensorflow: ["2.15.0"]
+      - version: "3.0"
+        requires:
+          tensorflow: ["2.16.1"]
+          torch: ["2.1.0"]
+
+  - name: "opencv-python"
+    versions:
+      - version: "4.12.0.88"
+        requires:
+          python: [">=3.7", "<=3.13"]
+      - version: "4.10.0.68"
+        requires:
+          python: [">=3.9", "<=3.11"]
+      - version: "4.8.0.74"
+        requires:
+          python: [">=3.9", "<=3.9"]
+      - version: "4.5.2.52"
+        requires:
+          python: [">=3.6", "<=3.9"]
+
+  - name: "scikit-learn"
+    versions:
+      - version: "1.7.2"
+        requires:
+          python: [">=3.10"]
+          numpy: [">=1.22.0"]
+      - version: "1.6.0"
+        requires:
+          python: [">=3.9"]
+          numpy: [">=1.19.5"]
+      - version: "1.5"
+        requires:
+          python: [">=3.9"]
+          numpy: [">=1.19.5"]
+      - version: "1.3"
+        requires:
+          python: [">=3.8"]
+          numpy: [">=1.17.3"]
+      - version: "1.0"
+        requires:
+          python: [">=3.7"]
+          numpy: [">=1.14.6"]
+
+  - name: "matplotlib"
+    versions:
+      - version: "3.10.6"
+        requires:
+          python: [">=3.10"]
+          numpy: [">=1.23"]
+      - version: "3.9"
+        requires:
+          python: [">=3.9"]
+          numpy: [">=1.23.0"]
+      - version: "3.8"
+        requires:
+          python: [">=3.9"]
+          numpy: [">=1.21.0"]
+      - version: "3.7"
+        requires:
+          python: [">=3.8"]
+          numpy: [">=1.20.0"]
+      - version: "3.6"
+        requires:
+          python: [">=3.8"]
+          numpy: [">=1.19.0"]
+      - version: "3.5"
+        requires:
+          python: [">=3.7"]
+          numpy: [">=1.17.0"]
+      - version: "3.4"
+        requires:
+          python: [">=3.7"]
+          numpy: [">=1.16.0"]
+      - version: "3.3"
+        requires:
+          python: [">=3.6"]
+          numpy: [">=1.15.0"]
+      - version: "3.2"
+        requires:
+          python: [">=3.6"]
+          numpy: [">=1.11.0"]
+      - version: "3.1"
+        requires:
+          python: [">=3.6"]
+          numpy: [">=1.11.0"]
+      - version: "3.0"
+        requires:
+          python: [">=3.5"]
+          numpy: [">=1.10.0"]
+
+  - name: "transformers"
+    versions:
+      - version: "4.55.4"
+        requires:
+          python: [">=3.9"]
+          torch: [">=2.1"]
+          tensorflow: [">=2.6"]
+      - version: "4.50.0"
+        requires:
+          python: [">=3.9"]
+          torch: [">=2.0"]
+          tensowflow: [">=2.6"]
+      - version: "4.20.1"
+        requires:
+          python: [">=3.6"]
+          torch: [">=1.1.0"]
+          tensorflow: [">=2.0"]
+
+  - name: "huggingface_hub"
+    versions:
+      - version: "V1.0.0.RC0"
+        requires:
+          python: [">=3.9"]
+      - version: "V0.35.0"
+        requires:
+          python: [">=3.8"]
+      - version: "V0.20.3"
+        requires:
+          python: [">=3.8"]
