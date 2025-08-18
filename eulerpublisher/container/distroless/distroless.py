@@ -12,6 +12,7 @@ DEFAULT_REGISTRY = EP_PATH + "config/container/distroless/registry.yaml"
 DOCKERFILE_PATH = EP_PATH + "config/container/distroless/Dockerfile"
 TESTCASE_PATH = EP_PATH + "tests/container/app/"
 TESTCASE_SUFFIX = "_test.sh"
+SPLITTER_DOCKER_IMAGE = "openeuler/splitter:latest"
 
 
 def parse_build_yaml(distrofile: str):
@@ -122,9 +123,15 @@ class DistrolessPublisher(pb.Publisher):
             """
             rootfs = "openEuler-distroless-rootfs." + arch.split('/')[-1]
             logger.info(f"|+++++++ output-path{self.workdir}/{rootfs}/ ++++++++|")
-            command = "splitter cut -a {} -r {} -o {} {}".format(
-                arch, self.release, f"{self.workdir}/{rootfs}/", self.parts
-            )
+            command = "docker run --rm -v {}:{} {} splitter cut -a {} -r {} -o {} {}".format(
+                self.workdir,
+                self.workdir,
+                SPLITTER_DOCKER_IMAGE,
+                arch,
+                self.release,
+                f"{self.workdir}/{rootfs}/",
+                self.parts)
+
             ret = subprocess.call(command, shell=True)
             if ret != pb.PUBLISH_SUCCESS:
                 logger.error(f"Failed to generate required slices for {arch}")

@@ -1,5 +1,26 @@
 #!/bin/bash
 set -e
+
+PKGS=("tar" "xz-utils" "qemu" "shunit2")
+
+if command -v apt-get >/dev/null 2>&1; then
+    sudo apt-get update
+    sudo apt-get install -y "${PKGS[@]}"
+
+elif command -v dnf >/dev/null 2>&1; then
+    sudo dnf install -y tar xz qemu shunit2
+
+elif command -v yum >/dev/null 2>&1; then
+    sudo yum install -y tar xz qemu shunit2
+
+elif command -v zypper >/dev/null 2>&1; then
+    sudo zypper install -y tar xz qemu shunit2
+
+else
+    echo "[ERROR] No supported package manager found (apt, dnf, yum, zypper)"
+    exit 1
+fi
+
 # clear unused resources
 echo "清理缓存..."
 docker image prune -f > /dev/null 2>&1
@@ -19,17 +40,10 @@ if [ which eulerpublisher > /dev/null 2>&1 ]; then
     sudo pip3 uninstall -y eulerpublisher > /dev/null 2>&1
 fi
 
-rm -rf splitter/
-dnf install -y python3-dnf git python3-pip cpio
-git clone https://gitee.com/openeuler/splitter.git
-cd splitter
-pip3 install . > /dev/null 2>&1
-
 cd ../
 rm -rf eulerpublisher/
 git clone https://gitee.com/openeuler/eulerpublisher.git
 cd eulerpublisher
-pip3 install -r ./requirements.txt > /dev/null 2>&1
-python3 setup.py install > /dev/null 2>&1
+pip3 install . > /dev/null 2>&1
 
 sudo -E python3 update/container/distroless/update.py
