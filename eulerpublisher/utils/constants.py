@@ -44,6 +44,12 @@ ARTIFACT_TYPES = {
     2: "cloudimg"
 }
 
+RPM_REPO_TYPES = {
+    0: "scm",
+    1: "pypi",
+    2: "rubygems"
+}
+
 ARCHS = ["x86_64", "aarch64"]
 REGISTRIES = ["docker.io", "quay.io"]
 REPOSITORY = "openeuler"
@@ -58,3 +64,6 @@ jobs:
 """
 
 GITHUB_ACTIONS_SUCCESS = "success"
+
+SUCCESS = 0
+FAILED = 1
