@@ -7,3 +7,5 @@ schedule
 colorlog
 gradio==5.23.0
 copr
+flask
+flask-cors

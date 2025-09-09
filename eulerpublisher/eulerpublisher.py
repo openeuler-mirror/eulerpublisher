@@ -5,6 +5,7 @@ from eulerpublisher.orchestrator.orchestrator import Orchestrator
 from eulerpublisher.monitor.monitor import Monitor
 from eulerpublisher.tracker.tracker import Tracker
 from eulerpublisher.ui.ui import UI
+from eulerpublisher.api.api import ApiServer
 
 def main():
     config = Config()
@@ -14,20 +15,24 @@ def main():
     # monitor = Monitor(config=config, logger=logger, db=db)
     tracker = Tracker(config=config, logger=logger, db=db)
     ui = UI(config=config, logger=logger, db=db)
+    api_server = ApiServer(config=config, logger=logger, db=db)
 
     orchestrator.start()
     # monitor.start()
     tracker.start()
     ui.start()
+    api_server.start()
  
     try:
         orchestrator.join()
         # monitor.join()
         tracker.join()
         ui.join()
+        api_server.thread.join()
     except KeyboardInterrupt:
         orchestrator.terminate()
         # monitor.terminate()
         tracker.terminate()
         ui.terminate()
-        
+        api_server.terminate()
+
