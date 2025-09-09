@@ -5,5 +5,5 @@ jinja2
 requests
 schedule
 colorlog
-inspect
-gradio
+gradio==5.23.0
+copr
