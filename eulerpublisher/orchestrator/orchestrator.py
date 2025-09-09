@@ -4,7 +4,6 @@ from multiprocessing import Process
 from eulerpublisher.utils.exceptions import UnsupportedWorkflowType
 from eulerpublisher.utils.constants import WORKFLOW_TYPES
 
-
 class Orchestrator(Process):
     def __init__(self, logger, config, db):
         super().__init__()
