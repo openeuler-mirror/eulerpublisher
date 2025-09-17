@@ -35,7 +35,7 @@ class RequestFailed(EulerPublisherException):
         super().__init__(msg, cause)
         self.url = url
         self.status_code = status_code
-        
+
 # 数据库相关异常
 class DatabaseError(EulerPublisherException):
     """数据库异常"""
@@ -55,6 +55,11 @@ class UnsupportedWorkflowType(EulerPublisherException):
     def __init__(self, workflow_type: str, cause=None):
         super().__init__(f"Unsupported workflow type: {workflow_type}", cause)
         self.workflow_type = workflow_type
+
+class UnsupportedRpmRepoType(EulerPublisherException):
+    def __init__(self, rpm_repo_type: str, cause=None):
+        super().__init__(f"Unsupported rpm repo type: {rpm_repo_type}", cause)
+        self.rpm_repo_type = rpm_repo_type
 
 class GitCloneFailed(EulerPublisherException):
     """Git 克隆失败异常"""

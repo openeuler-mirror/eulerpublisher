@@ -1,0 +1,5 @@
+[copr-cli]
+login = LOGIN_TO_REVEAL
+username = LOGIN_TO_REVEAL
+token = LOGIN_TO_REVEAL
+copr_url = https://eur.openeuler.openatom.cn
