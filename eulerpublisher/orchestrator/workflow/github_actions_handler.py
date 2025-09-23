@@ -200,7 +200,6 @@ class GithubActionsHandler(WorkflowHandler):
             self.logger.error(f"Failed to upload Github Actions workflow{e}")
 
     def get_run_id_by_commit(self, commit_sha, max_attempts=15, interval=2):
-        """根据提交SHA查找对应的工作流run_id，带轮询机制"""
         try:
             token = os.environ.get("GITHUB_TOKEN")
             g = Github(token)
@@ -208,21 +207,18 @@ class GithubActionsHandler(WorkflowHandler):
 
             for attempt in range(max_attempts):
                 try:
-                    # 获取仓库的工作流运行列表（按创建时间倒序）
                     runs = repo.get_workflow_runs(head_sha=commit_sha)
                     if runs.totalCount > 0:
-                        # 返回最新的一个匹配的run_id
                         self.logger.info(f"Found run_id {runs[0].id} for commit {commit_sha}")
                         return runs[0].id
                 except GithubException as e:
                     self.logger.warning(f"GitHub API request failed (attempt {attempt + 1}/{max_attempts}): {str(e)}")
 
-                # 未找到则等待下一次轮询
                 if attempt < max_attempts - 1:
                     time.sleep(interval)
 
             self.logger.warning(f"Timeout after {max_attempts * interval} seconds waiting for workflow run")
-            return None  # 超时未找到
+            return None
         except Exception as e:
             self.logger.error(f"Error while getting run_id by commit: {str(e)}")
             return None
