@@ -2,6 +2,10 @@ import os
 import shutil
 import re
 from git import Repo
+from github import Github, GithubException
+from eulerpublisher.utils.constants import WORKFLOW_STATUS_RUNNING, WORKFLOW_STATUS_FAILED, WORKFLOW_STATUS_SUCCEEDED, WORKFLOW_STATUS_WAITING_RUNNING
+from eulerpublisher.utils.date import get_current_timestamp
+import time
 
 from eulerpublisher.orchestrator.workflow.base import WorkflowHandler
 from eulerpublisher.utils.exceptions import (
@@ -42,6 +46,7 @@ class GithubActionsHandler(WorkflowHandler):
         self.config = config
         self.logger = logger
         self.db = db
+        self.owner_name = self.config.get(WORKFLOW_TYPES[0], "owner_name")
         self.repo_name = self.config.get(WORKFLOW_TYPES[0], "repo_name")
         self.repo_url = self.config.get(WORKFLOW_TYPES[0], "repo_url")
         self.repo_dir = os.path.join(WORK_DIR, self.repo_name)
@@ -70,51 +75,58 @@ class GithubActionsHandler(WorkflowHandler):
     def _handle_container_workflow(self, artifact_info):
         self.logger.info("Generating container workflow...")
         from eulerpublisher.orchestrator.recipe.dockerfile_handler import DockerfileHandler
+        try:
+            archs = artifact_info["archs"]
+            registries = artifact_info["registries"]
+            repository = artifact_info["repository"]
+            layers = artifact_info["layers"]
 
-        archs = artifact_info["archs"]
-        registries = artifact_info["registries"]
-        repository = artifact_info["repository"]
-        layers = artifact_info["layers"]
+            workflow_path = os.path.join(self.repo_dir, ".github", "workflows", "workflow.yml")
+            os.makedirs(os.path.dirname(workflow_path), exist_ok=True)
+            with open(workflow_path, "w") as f:
+                f.write(GITHUB_ACTIONS_HEADER)
 
-        workflow_path = os.path.join(self.repo_dir, ".github", "workflows", "workflow.yml")
-        os.makedirs(os.path.dirname(workflow_path), exist_ok=True)
-        with open(workflow_path, "w") as f:
-            f.write(GITHUB_ACTIONS_HEADER)
+            recipe_handler = DockerfileHandler(self.config, self.logger, self.repo_dir)
 
-        recipe_handler = DockerfileHandler(self.config, self.logger, self.repo_dir)
+            tag = None
+            needs = None
+            base = "scratch"
+            for layer in layers:
+                name = layer.get("name")
+                version = layer.get("version")
 
-        tag = None
-        needs = None
-        base = "scratch"
-        for layer in layers:
-            name = layer.get("name")
-            version = layer.get("version")                
-            
-            # special handling for openeuler
-            if name == "openeuler":
-                tag = re.sub(r'\.(?=LTS)|\.(?=SP\d)', '-', version).lower()
-            else:
-                tag = f"{version}-{tag}"    
-                    
-            image = self.db.query_image(
-                            software_name=name, 
-                            version_name=version, 
-                            repository=repository, 
-                            tag=tag)
-            if not image or not set(archs).issubset(set(image["arch"].split(","))):
-                recipe_handler.handle_recipe(name, version, base)
-                self._handle_container_job(registries, repository, name, version, tag, needs, archs)
-                needs = name
-            base = f"{registries[0]}/{repository}/{name}:{tag}"
+                # special handling for openeuler
+                if name == "openeuler":
+                    tag = re.sub(r'\.(?=LTS)|\.(?=SP\d)', '-', version).lower()
+                else:
+                    tag = f"{version}-{tag}"
 
-            # special handling for openeuler
-            if name == "openeuler":
-                tag = re.sub(r'LTS(?=\.)', '', version)
-                tag = "oe" + re.sub(r'\.', '', tag).lower()
-            else:
-                tag = f"{name}{tag}"
-        self.logger.info("Container workflow generated successfully")
-        
+                image = self.db.query_image(
+                                software_name=name,
+                                version_name=version,
+                                repository=repository,
+                                tag=tag)
+                if not image or not set(archs).issubset(set(image["arch"].split(","))):
+                    recipe_handler.handle_recipe(name, version, base)
+                    self._handle_container_job(registries, repository, name, version, tag, needs, archs)
+                    needs = name
+                base = f"{registries[0]}/{repository}/{name}:{tag}"
+
+                # special handling for openeuler
+                if name == "openeuler":
+                    tag = re.sub(r'LTS(?=\.)', '', version)
+                    tag = "oe" + re.sub(r'\.', '', tag).lower()
+                else:
+                    tag = f"{name}{tag}"
+            self.logger.info("Container workflow generated successfully")
+        except Exception as e:
+            id = artifact_info["id"]
+            update_data = {
+                "status": WORKFLOW_STATUS_FAILED
+            }
+            self.db.update_workflow(id, update_data)
+            self.logger.error(f"Failed to generate container workflow: {e}")
+
 
     def _handle_container_job(self, registries, repository, name, version, tag, needs, archs):
         self.logger.info(f"Generating job for {name}:{version}...")
@@ -144,15 +156,76 @@ class GithubActionsHandler(WorkflowHandler):
         )
         self.logger.info(f"Job for {name}:{version} generated successfully")
 
-    def upload_workflow(self):
+    def upload_workflow(self, id):
         self.logger.info("Uploading Github Actions workflow...")
+        try:
+            repo = Repo(self.repo_dir)
+            _git_pull(repo)
+            _git_commit(repo)
+            _git_push(repo)
 
-        repo = Repo(self.repo_dir)
-        _git_pull(repo)
-        _git_commit(repo)
-        _git_push(repo)
+            commit_sha = repo.head.commit.hexsha
 
-        self.logger.info("Github Actions workflow uploaded successfully")
+            started_on = get_current_timestamp()
+            run_id = self.get_run_id_by_commit(
+                commit_sha,
+                max_attempts=15,
+                interval=2
+            )
+            if not run_id:
+                self.logger.warning(f"Could not find run_id for commit {commit_sha}")
+                update_data = {
+                    "status": WORKFLOW_STATUS_WAITING_RUNNING,
+                    "started_on": started_on,
+                    "owner_name": self.owner_name,
+                    "repo_name": self.repo_name,
+                    "commit_sha": commit_sha
+                }
+            else:
+                update_data = {
+                    "status": WORKFLOW_STATUS_RUNNING,
+                    "started_on": started_on,
+                    "owner_name": self.owner_name,
+                    "repo_name": self.repo_name,
+                    "run_id": run_id,
+                    "commit_sha": commit_sha
+                }
+            self.db.update_workflow(id, update_data)
+            self.logger.info("Github Actions workflow uploaded successfully")
+        except Exception as e:
+            update_data = {
+                "status": WORKFLOW_STATUS_FAILED
+            }
+            self.db.update_workflow(id, update_data)
+            self.logger.error(f"Failed to upload Github Actions workflow{e}")
+
+    def get_run_id_by_commit(self, commit_sha, max_attempts=15, interval=2):
+        """根据提交SHA查找对应的工作流run_id，带轮询机制"""
+        try:
+            token = os.environ.get("GITHUB_TOKEN")
+            g = Github(token)
+            repo = g.get_repo(f"{self.owner_name}/{self.repo_name}")
+
+            for attempt in range(max_attempts):
+                try:
+                    # 获取仓库的工作流运行列表（按创建时间倒序）
+                    runs = repo.get_workflow_runs(head_sha=commit_sha)
+                    if runs.totalCount > 0:
+                        # 返回最新的一个匹配的run_id
+                        self.logger.info(f"Found run_id {runs[0].id} for commit {commit_sha}")
+                        return runs[0].id
+                except GithubException as e:
+                    self.logger.warning(f"GitHub API request failed (attempt {attempt + 1}/{max_attempts}): {str(e)}")
+
+                # 未找到则等待下一次轮询
+                if attempt < max_attempts - 1:
+                    time.sleep(interval)
+
+            self.logger.warning(f"Timeout after {max_attempts * interval} seconds waiting for workflow run")
+            return None  # 超时未找到
+        except Exception as e:
+            self.logger.error(f"Error while getting run_id by commit: {str(e)}")
+            return None
         
     def __del__(self):
         if os.path.exists(self.repo_dir):

@@ -11,7 +11,6 @@ class Orchestrator(Process):
         self.config = config
         self.db = db
         self.workflow_handler = self._get_workflow_handler()
-        self.rpm_handler = self._get_rpm_handler()
         self.logger.info("Orchestrator initialized")
 
     def _get_workflow_handler(self):
@@ -29,10 +28,6 @@ class Orchestrator(Process):
             self.logger.error(f"Unsupported workflow type: {workflow_type}")
             raise UnsupportedWorkflowType(workflow_type)
 
-    def _get_rpm_handler(self):
-        from eulerpublisher.rpm.rpm import RpmHandler
-        return RpmHandler(self.config, self.logger, self.db)
-
     def run(self):
         conn = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
         channel = conn.channel()
@@ -49,11 +44,8 @@ class Orchestrator(Process):
             artifact = request.get("artifact")
             artifact_type = artifact.get("type")
             artifact_info = artifact.get("info")
-            if artifact_type == "rpm":
-                self.rpm_handler.handle_rpm(artifact_type, artifact_info)
-            else:
-                self.workflow_handler.handle_workflow(artifact_type, artifact_info)
-                self.workflow_handler.upload_workflow()
+            self.workflow_handler.handle_workflow(artifact_type, artifact_info)
+            self.workflow_handler.upload_workflow(artifact_info["id"])
 
         channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
         channel.start_consuming()

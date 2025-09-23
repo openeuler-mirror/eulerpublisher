@@ -5,5 +5,5 @@ class WorkflowHandler:
     def handle_workflow(self, artifact_type, artifact_info):
         pass
         
-    def upload_workflow(self):
+    def upload_workflow(self, id):
         pass
