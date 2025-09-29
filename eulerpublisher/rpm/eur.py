@@ -135,7 +135,8 @@ class EurOperation():
     def get_build_state_by_id(self, id: int):
         try:
             res = self.client.build_proxy.get(id)
-            return res.state
+            logging.info(f'build id res {str(res)}')
+            return res
         except Exception as e:
             logging.error(f'Failed to get build<{id}>: {e}')
             return None
@@ -174,7 +175,7 @@ class EurOperation():
                 committish,
                 subdirectory,
                 spec
-            ).id
+            )
         except Exception as e:
             logging.error(f'Failed to create build from scm for <{clone_url}>: {e}')
             return None
@@ -191,7 +192,7 @@ class EurOperation():
                 projectname,
                 pypi_package_name,
                 pypi_package_version
-            ).id
+            )
         except Exception as e:
             logging.error(f'Failed to create build from pypi for <{pypi_package_name}>: {pypi_package_version}')
             return None
@@ -206,7 +207,7 @@ class EurOperation():
                 ownername,
                 projectname,
                 gem_name,
-            ).id
+            )
         except Exception as e:
             logging.error(f'Failed to create build from pypi for <{gem_name}>')
             return None

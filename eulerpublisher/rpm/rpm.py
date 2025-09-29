@@ -26,56 +26,51 @@ class RpmHandler():
         return SUCCESS if proj else FAILED
 
 
-    def build_scm_repo(self, ownername, projectname, packages):
-        buildlist = []
-        for url, subdirectory, spec, branch in packages:
-            self.logger.info(f'Building {url}, {subdirectory}, {spec}, {branch}')
-            buildlist.append(self.eur.create_build_from_scm(
-                ownername=ownername,
-                projectname=projectname,
-                clone_url=url,
-                subdirectory=subdirectory,
-                spec=spec,
-                committish=branch))
-        return buildlist
+    def build_scm_repo(self, ownername, projectname, package):
+        url, subdirectory, spec, branch = package
+        self.logger.info(f'Building {url}, {subdirectory}, {spec}, {branch}')
+        build = self.eur.create_build_from_scm(
+            ownername=ownername,
+            projectname=projectname,
+            clone_url=url,
+            subdirectory=subdirectory,
+            spec=spec,
+            committish=branch)
+        return build
 
-    def build_pypi_repo(self, ownername, projectname, packages):
-        buildlist = []
-        for pypi_package_name, pypi_package_version in packages:
-            pypi_package_version = None if pypi_package_version == '' else pypi_package_version
-            buildlist.append(self.eur.create_build_from_pypi(
-                ownername=ownername,
-                projectname=projectname,
-                pypi_package_name=pypi_package_name,
-                pypi_package_version=pypi_package_version))
-        return buildlist
+    def build_pypi_repo(self, ownername, projectname, package):
+        pypi_package_name, pypi_package_version = package
+        pypi_package_version = None if pypi_package_version == '' else pypi_package_version
+        self.logger.info(f'Building {pypi_package_name}, {pypi_package_version}')
+        build = self.eur.create_build_from_pypi(
+            ownername=ownername,
+            projectname=projectname,
+            pypi_package_name=pypi_package_name,
+            pypi_package_version=pypi_package_version)
+        return build
 
-    def build_rubygems_repo(self, ownername, projectname, packages):
-        buildlist = []
-        for gem_name in packages:
-            buildlist.append(self.eur.create_build_from_rubygems(
+    def build_rubygems_repo(self, ownername, projectname, package):
+        gem_name = package[0]
+        self.logger.info(f'Building {gem_name}')
+        build = self.eur.create_build_from_rubygems(
                 ownername=ownername,
                 projectname=projectname,
-                gem_name=gem_name))
-        return buildlist
+                gem_name=gem_name)
+        return build
     
     
-    def query_build_state(self, buildids: list):
-        states = []
-        for id in buildids:
-            state = self.eur.get_build_state_by_id(id)
-            if state:
-                states.append((id, state))
-        return states
+    def query_build_state(self, id):
+        return self.eur.get_build_state_by_id(id)
 
-    def handle_rpm(self, artifact_type, artifact_info):
+    def handle_rpm(self, artifact_info):
         self.logger.info("Building rpm using EUR API...")
         repo_type =artifact_info["repo_type"]
         owner = artifact_info["owner"]
         project = artifact_info["project"]
         chroots = artifact_info["chroots"]
         desc = artifact_info.get("desc", "")
-        packages = artifact_info["packages"]
+        package = artifact_info["package"]
+        self.logger.info(f'Repo type: {repo_type}, owner: {owner}, project: {project}, chroots: {chroots}, desc: {desc}, package: {package}')
 
         ret = FAILED
         while ret != SUCCESS:
@@ -90,6 +85,6 @@ class RpmHandler():
             self.logger.error(f"Unsupported repo type: {repo_type}")
             raise UnsupportedRpmRepoType(repo_type)
 
-        build_list = build_functions[repo_type](owner, project, packages)
-        states = self.query_build_state(build_list)
-        self.logger.info(f"build states:{states}")
+        build = build_functions[repo_type](owner, project, package)
+        self.logger.info(f"build states:{build.id}, {build.state}")
+        return build

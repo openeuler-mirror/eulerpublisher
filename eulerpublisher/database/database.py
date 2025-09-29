@@ -1,7 +1,7 @@
 import sqlite3
 import os
 from eulerpublisher.utils.exceptions import DatabaseError
-from eulerpublisher.utils.constants import DATABASE_DIR
+from eulerpublisher.utils.constants import DATABASE_DIR, WORKFLOW_STATUS_UPLOADING
 from eulerpublisher.utils.utils import _dict_factory
 
 DATABASE_PATH = os.path.join(DATABASE_DIR, "eulerpublisher.db")
@@ -64,6 +64,22 @@ class Database:
                     UNIQUE (software_id, dependency_id)
                 )
                 ''')
+
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS workflow_status (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        artifact_type INTEGER NOT NULL,
+                        status VARCHAR(50) NOT NULL,
+                        submitted_on INTEGER,
+                        started_on INTEGER,
+                        ended_on INTEGER,
+                        owner_name VARCHAR(50),
+                        repo_name VARCHAR(50),
+                        run_id INTEGER NOT NULL,
+                        commit_sha VARCHAR(40)
+                    )
+                ''')
+
                 conn.commit()
         except sqlite3.Error as e:
             self.logger.error(f"Error creating tables: {e}")
@@ -305,3 +321,52 @@ class Database:
         except sqlite3.Error as e:
             self.logger.error(f"Error querying dependency: {e}")
             raise DatabaseError(f"Failed to query dependency: {e}")
+
+    def insert_workflow(self, artifact_type, submitted_on):
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                            INSERT INTO workflow_status (artifact_type, status, submitted_on, started_on, ended_on, owner_name, repo_name, run_id, commit_sha)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ''', (artifact_type, WORKFLOW_STATUS_UPLOADING, submitted_on, None, None, None, None, -1, None))
+                inserted_id = cursor.lastrowid
+                return inserted_id
+        except sqlite3.Error as e:
+            self.logger.error(f"Error inserting workflow status: {e}")
+            raise DatabaseError(f"Failed to insert workflow status: {e}")
+
+    def update_workflow(self, id, workflow_data):
+        valid_updates = {k: v for k, v in workflow_data.items() if v is not None}
+
+        if not valid_updates:
+            return None
+
+        set_clause = ", ".join([f"{key} = ?" for key in valid_updates.keys()])
+        sql = f"UPDATE workflow_status SET {set_clause} WHERE id = ?"
+        params = list(valid_updates.values()) + [id]
+
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, params)
+            success = cursor.rowcount > 0
+
+            return success
+
+    def query_by_id(self, record_id):
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                query = """
+                    SELECT * 
+                    FROM workflow_status 
+                    WHERE id = ?
+                """
+
+                cursor.execute(query, (record_id,))
+                result = cursor.fetchone()
+            return dict(result) if result else None
+        except sqlite3.Error as e:
+            self.logger.error(f"Error querying workflow status: {e}")
+            return None

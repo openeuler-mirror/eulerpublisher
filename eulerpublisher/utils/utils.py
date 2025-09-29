@@ -37,8 +37,15 @@ def _init_repository(repo_dir, repo_url):
 
 def _git_pull(repo):
     try:
+        untracked_files = repo.untracked_files
+        if untracked_files:
+            repo.git.stash("save", "--include-untracked",
+                           f"Auto-stash before pull: {datetime.now()}")
         repo.remotes.origin.pull()
+        if untracked_files:
+            repo.git.stash("pop")
     except GitCommandError as e:
+        print(f"Pull operation failed: {e}")
         raise GitPullFailed("Pull operation failed")
 
 def _git_commit(repo):

@@ -50,6 +50,13 @@ RPM_REPO_TYPES = {
     2: "rubygems"
 }
 
+WORKFLOW_STATUS_PENDING = "pending"
+WORKFLOW_STATUS_UPLOADING = "uploading"
+WORKFLOW_STATUS_RUNNING = "running"
+WORKFLOW_STATUS_SUCCEEDED = "succeeded"
+WORKFLOW_STATUS_FAILED = "failed"
+WORKFLOW_STATUS_WAITING_RUNNING = "waiting_running"
+
 ARCHS = ["x86_64", "aarch64"]
 REGISTRIES = ["docker.io", "quay.io"]
 REPOSITORY = "openeuler"
