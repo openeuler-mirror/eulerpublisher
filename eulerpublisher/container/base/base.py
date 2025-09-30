@@ -93,6 +93,10 @@ class OePublisher(pb.Publisher):
             multi=self.multi_file,
         )
         
+        # clean cache
+        if os.path.exists(CACHE_DATA_PATH):
+            shutil.rmtree(CACHE_DATA_PATH)
+
         # buildx platforms
         self.platforms = ""
 
@@ -133,6 +137,7 @@ class OePublisher(pb.Publisher):
             # get rootfs
             rootfs = "openEuler-docker-rootfs." + platform + ".tar.xz"
             if os.path.exists(rootfs):
+                self.platforms = self.platforms + f"linux/{platform},"
                 continue
             tar_cmd = [
                 "tar",
