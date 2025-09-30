@@ -50,7 +50,7 @@ if [[ ! $(which obsutil) ]]; then
 fi
 
 if [[ ! $(which coscli) ]]; then
-    wget https://cosbrowser.cloud.tencent.com/software/coscli/coscli-v1.0.1-linux-${COSCLI_ARCH} -O coscli
+    wget https://cosbrowser.cloud.tencent.com/software/coscli/coscli-linux-${COSCLI_ARCH} -O coscli
     chmod 755 coscli
     sudo cp -p coscli /usr/local/bin
 fi

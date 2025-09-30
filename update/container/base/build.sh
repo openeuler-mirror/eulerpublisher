@@ -2,9 +2,9 @@
 echo -e "\n[STAGE] Prepare environment"
 sudo apt-get update
 sudo apt-get install -y tar xz-utils qemu shunit2
-if [[docker info > /dev/null 2>&1]]; then
-    systemctl start docker
+if ! docker info > /dev/null 2>&1; then
     echo "starting docker..."
+    sudo systemctl start docker
 fi
 
 echo -e "\n[STAGE] Install eulerpublisher"
