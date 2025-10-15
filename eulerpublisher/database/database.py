@@ -1,7 +1,8 @@
 import sqlite3
 import os
+import yaml
 from eulerpublisher.utils.exceptions import DatabaseError
-from eulerpublisher.utils.constants import DATABASE_DIR, WORKFLOW_STATUS_UPLOADING
+from eulerpublisher.utils.constants import DATABASE_DIR, WORKFLOW_STATUS_UPLOADING, KNOWLEDGE_DIR
 from eulerpublisher.utils.utils import _dict_factory
 
 DATABASE_PATH = os.path.join(DATABASE_DIR, "eulerpublisher.db")
@@ -81,9 +82,41 @@ class Database:
                 ''')
 
                 conn.commit()
+
+                # 添加知识库中默认支持的软件及版本（保证在无知识库文件的情况下也能安全执行）
+                self.add_software_from_knowledge(os.path.join(KNOWLEDGE_DIR, "knowledge.yaml"))
+                # 添加特殊情况，以langchain和openai为例，不存在于知识库中
+                if self.query_software("langchain") is None:
+                    self.insert_software("langchain")
+                    self.insert_version("langchain", "0.2")
+                    self.insert_version("langchain", "0.3")
+                if self.query_software("openai") is None:
+                    self.insert_software("openai")
+                    self.insert_version("openai", "1.109.1")
+
         except sqlite3.Error as e:
             self.logger.error(f"Error creating tables: {e}")
             raise DatabaseError(f"Failed to create database tables: {e}")
+
+    def add_software_from_knowledge(self, knowledge_path):
+        if not os.path.exists(knowledge_path):
+            return
+        if len(self.list_software()) > 0:
+            return
+
+        with open(knowledge_path, "r", encoding="utf-8") as f:
+            knowledge = yaml.safe_load(f)
+        
+        for item in knowledge.get("knowledge", []):
+            name = item.get("name", "unknown")
+            if name == "unknown":
+                continue
+            self.insert_software(name)
+            for v in item.get("versions", []):
+                version = v.get("version", "unknown")
+                if version == "unknown":
+                    continue
+                self.insert_version(name, version)
 
     def insert_software(self, software_name):
         try:

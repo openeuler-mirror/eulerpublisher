@@ -1,7 +1,9 @@
 CHANGES
 =======
 
+* engine for eulerpublisher
 * !134 update exception and logging process
+* fix some bugs and update database
 * update exception and logging process
 * !119 after ODD2025 demo
 * !120 Add auto triggering build image feature
