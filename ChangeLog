@@ -1,9 +1,26 @@
 CHANGES
 =======
 
+* !156 engine1.0
 * engine for eulerpublisher
+* fix some bugs & update database
+* !152 feat: add frontend for eulerpublisher
+* !151 feat: add api for building rpm/container and querying build status
+* feat: frontend for eulerpublisher
+* delete chinese comments
+* add api for building rpm/container and query build status
+* return build munch
+* !150 support rpm build with EUR API
+* add api for building rpm and container
+* add copr
+* delete some blank lines
+* support rpm build with EUR API
+* support eur api
+* !139 Fix bugs
+* fix
+* fix
+* Fix bugs
 * !134 update exception and logging process
-* fix some bugs and update database
 * update exception and logging process
 * !119 after ODD2025 demo
 * !120 Add auto triggering build image feature

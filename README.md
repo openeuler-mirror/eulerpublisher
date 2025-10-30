@@ -5,13 +5,6 @@
 2.  cloud images构建、发布
 3.  WSL images构建、发布
 
-`eulerpublisher`仍处于开发过程中，使用以下方式进行安装
-
-```
-python setup.py install
-```
-
-
 ## 环境依赖
 1.`eulerpublisher`实现多平台docker镜像构建功能依赖于docker和qemu，安装方式如下：
 
@@ -82,6 +75,35 @@ eulerpublisher container publish --repo openeuler/openeuler --version 22.03-LTS-
 
 ### 3. 发布WSL images
 待补充
+
+### 4. 发布container images（Dev-V1）（建议使用该种方式）
+
+**Dev-V1分支提供了UI版本的Eulerpublisher，无需输入### 1中的指令**
+
+-  **步骤1** 、配置必要参数(`configs/eulerpublisher.conf`)
+[global] llm_token 如需使用engine模块，需配置模型在线api的token
+[Github Actions] repo_name repo_url 配置个人的git仓库名和git地址，Eulerpublisher会将渲染后的模板上传到目标仓库，并自动执行CI/CD构建容器镜像
+[docker] repository 容器仓库地址，构建成功后，Github Actions会将容器镜像发布到对应的仓库
+
+-  **步骤2** 、（环境搭建略，但是需要注意eulerpublisher还需要rabbitmq支持）安装eulerpublisher
+```
+python setup.py install
+```
+
+-  **步骤3** 、启动eulerpublisher
+```
+eulerpublisher
+```
+
+-  **注意事项**
+1.Engine模块说明：
+  -Engine模块为依赖分析引擎，能够基于模型判断用户选择的软件是否存在版本冲突、构建顺序不合理、依赖层可合并等。
+  -如果不需要使用该模块，在前端可直接选择“不使用模型分析”。
+  -Engine模块直接集成至UI模块(`eulerpublisher/ui/ui.py`)，需要提前配置可用的模型至`ui.py`中的SUPPORTED_MODELS列表，并在`engine.py`中配置
+  调用模型的API，配置所有`OpenAI`调用时的`base_url`。
+  -模型的分析效果与模型的选型相关，根据测试结果，70B的模型即可达到较好的分析效果，不建议选择小于30B的模型，具体模型请根据具体任务结合专业知识选择。
+2.其他说明：
+  -Eulerpublisher目前有多种使用方式（UI或命令行），都可以实现完整功能，可自行选择。
 
 ## 参与贡献
 
