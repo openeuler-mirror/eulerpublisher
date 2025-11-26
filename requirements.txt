@@ -13,3 +13,4 @@ prettytable
 pyyaml
 requests
 wget
+certifi
