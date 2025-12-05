@@ -12,7 +12,7 @@ from eulerpublisher.publisher import logger, DEFAULT_APP_ARCHES
 import format
 
 REPOSITORY_REQUEST_URL = (
-    "https://api.gitcode.com/api/v5/repos/openeuler/openeuler-docker-images/pulls/"
+    "https://gitee.com/api/v5/repos/openeuler/openeuler-docker-images/pulls/"
 )
 MAX_REQUEST_COUNT = 20
 SUCCESS_CODE = 200
