@@ -96,7 +96,7 @@ def _pull_source_code():
         shutil.rmtree(DEFAULT_WORKDIR)
 
     # git clone
-    s_repourl = "https://gitee.com/openeuler/openeuler-docker-images.git"
+    s_repourl = "https://gitcode.com/openeuler/openeuler-docker-images.git"
     workdir = f"{DEFAULT_WORKDIR}/openeuler-docker-images"
     os.makedirs(workdir)
 

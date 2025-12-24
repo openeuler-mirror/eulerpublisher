@@ -29,14 +29,14 @@ fi
 # update splitter for building distroless images
 rm -rf splitter/
 dnf install -y python3-dnf git python3-pip cpio
-git clone https://gitee.com/openeuler/splitter.git
+git clone https://gitcode.com/openeuler/splitter.git
 cd splitter
 pip3 install . > /dev/null 2>&1
 
 # update eulerpublisher
 cd ../
 rm -rf eulerpublisher/
-git clone https://gitee.com/openeuler/eulerpublisher.git
+git clone https://gitcode.com/openeuler/eulerpublisher.git
 cd eulerpublisher
 pip3 install -r ./requirements.txt > /dev/null 2>&1
 python3 setup.py install > /dev/null 2>&1
