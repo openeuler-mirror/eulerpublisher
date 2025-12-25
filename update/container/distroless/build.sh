@@ -42,7 +42,7 @@ fi
 
 cd ../
 rm -rf eulerpublisher/
-git clone https://gitee.com/openeuler/eulerpublisher.git
+git clone https://gitcode.com/openeuler/eulerpublisher.git
 cd eulerpublisher
 pip3 install . > /dev/null 2>&1
 
