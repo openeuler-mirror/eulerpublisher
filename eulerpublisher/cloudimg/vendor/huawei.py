@@ -19,7 +19,7 @@ def push_huawei(arch, version, bucket, region, image):
 
     # 上传镜像到OBS存储
     try:
-        subprocess.call(
+        ret = subprocess.call(
             [
                 "obsutil",
                 "cp",
@@ -27,6 +27,11 @@ def push_huawei(arch, version, bucket, region, image):
                 "obs://" + bucket + "/" + image,
             ]
         )
+        if ret != 0:
+            raise click.ClickException(
+                "\n[Push] (Huawei cloud) Failed to upload image to "
+                "bucket: %s" % bucket
+            )
     except Exception as err:
         raise click.ClickException(
             "\n[Push] (Huawei cloud) Failed to upload image to "

@@ -129,6 +129,7 @@ class AppPublisher(pb.Publisher):
                     return pb.PUBLISH_FAILED
         except (OSError, subprocess.CalledProcessError) as err:
             logger.error(f"[Push] {err}")
+            return pb.PUBLISH_FAILED
         logger.info("[Push] finished")
         return pb.PUBLISH_SUCCESS
 
@@ -145,6 +146,7 @@ class AppPublisher(pb.Publisher):
                 return pb.PUBLISH_FAILED
         except (OSError, subprocess.CalledProcessError) as err:
             logger.error(f"[Push] {err}")
+            return pb.PUBLISH_FAILED
         logger.info("[Push] finished")
         return pb.PUBLISH_SUCCESS
 
