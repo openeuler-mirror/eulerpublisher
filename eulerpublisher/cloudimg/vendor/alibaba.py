@@ -3,13 +3,15 @@ import os
 import subprocess
 import click
 
+from eulerpublisher.publisher import get_temp_dir
+
 from alibabacloud_ecs20140526.client import Client as EcsClient
 from alibabacloud_tea_openapi import models as open_api_models
 from alibabacloud_ecs20140526 import models as ecs_models
 from alibabacloud_tea_util import models as util_models
 from alibabacloud_tea_util.client import Client as UtilClient
 
-DATA_PATH = "/tmp/eulerpublisher/cloudimg/data/"
+DATA_PATH = get_temp_dir("cloudimg", "data") + os.sep
 
 def push_alibaba(arch, version, bucket, region, image):
     # 获取凭证信息

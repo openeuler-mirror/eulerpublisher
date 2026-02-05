@@ -4,10 +4,10 @@ import shutil
 import subprocess
 import yaml
 import eulerpublisher.publisher.publisher as pb
-from eulerpublisher.publisher import EP_PATH
+from eulerpublisher.publisher import EP_PATH, get_temp_dir
 from eulerpublisher.publisher import logger
 
-DISTROLESS_CACHE_PATH = "/tmp/eulerpublisher/container/distroless"
+DISTROLESS_CACHE_PATH = get_temp_dir("container", "distroless")
 DEFAULT_REGISTRY = EP_PATH + "config/container/distroless/registry.yaml"
 DOCKERFILE_PATH = EP_PATH + "config/container/distroless/Dockerfile"
 TESTCASE_PATH = EP_PATH + "tests/container/app/"

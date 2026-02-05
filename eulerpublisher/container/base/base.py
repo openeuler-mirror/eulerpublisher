@@ -9,10 +9,10 @@ import yaml
 
 
 import eulerpublisher.publisher.publisher as pb
-from eulerpublisher.publisher import EP_PATH, OPENEULER_DOCKERFILE, logger
+from eulerpublisher.publisher import EP_PATH, OPENEULER_DOCKERFILE, logger, get_temp_dir
 from eulerpublisher.publisher import OPENEULER_REPO, AVAILABLE_ARCHES
 
-CACHE_DATA_PATH = "/tmp/eulerpublisher/container/base/"
+CACHE_DATA_PATH = get_temp_dir("container", "base") + os.sep
 DOCKERFILE_PATH = EP_PATH + "config/container/base/Dockerfile"
 TAGS = EP_PATH + "config/container/base/tags.yaml"
 DEFAULT_REGISTRY = EP_PATH + "config/container/base/registry.yaml"

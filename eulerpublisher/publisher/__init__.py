@@ -1,15 +1,24 @@
 # coding=utf-8
 import logging
 import os
+import tempfile
 
 
 EP_PATH = None
 EP_LOG_DIR = "/tmp/"
-OPENEULER_REPO = "http://repo.openeuler.org/"
+EP_TMP_DIR = ""
+OPENEULER_REPO = "https://repo.openeuler.org/"
 OPENEULER_DOCKERFILE = "https://gitee.com/openeuler/openeuler-docker-images/raw/master/Base/openeuler/Dockerfile"
 
 if os.environ.get('EP_LOG_DIR'):
     EP_LOG_DIR = os.environ.get('EP_LOG_DIR')
+
+if os.environ.get("EP_TMP_DIR"):
+    EP_TMP_DIR = os.environ.get("EP_TMP_DIR")
+else:
+    EP_TMP_DIR = tempfile.mkdtemp(prefix="eulerpublisher_")
+
+os.makedirs(EP_TMP_DIR, exist_ok=True)
 
 paths = [
     os.path.dirname(os.__file__) + "/" + "../../etc/eulerpublisher/",
@@ -70,3 +79,10 @@ class Logger:
         self.logger.critical(msg, stacklevel=2)
 
 logger = Logger()
+
+
+def get_temp_dir(*parts, create=False):
+    path = os.path.join(EP_TMP_DIR, *parts)
+    if create:
+        os.makedirs(path, exist_ok=True)
+    return path

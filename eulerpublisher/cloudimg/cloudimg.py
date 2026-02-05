@@ -6,14 +6,14 @@ import platform
 import wget
 
 import eulerpublisher.publisher.publisher as pb
-from eulerpublisher.publisher import EP_PATH, logger
+from eulerpublisher.publisher import EP_PATH, logger, get_temp_dir
 from eulerpublisher.publisher import OPENEULER_REPO
 from eulerpublisher.cloudimg.vendor.huawei import push_huawei
 from eulerpublisher.cloudimg.vendor.tencent import push_tencent
 from eulerpublisher.cloudimg.vendor.alibaba import push_alibaba
 from eulerpublisher.cloudimg.vendor.aws import push_aws
 
-DATA_PATH = "/tmp/eulerpublisher/cloudimg/data/"
+DATA_PATH = get_temp_dir("cloudimg", "data") + os.sep
 SCRIPT_PATH = EP_PATH + "config/cloudimg/script/"
 RESOURCE_PATH = EP_PATH + "config/cloudimg/resource/"
 DEFAULT_RPMLIST = RESOURCE_PATH + "install_packages.txt"

@@ -6,8 +6,8 @@ import json
 import subprocess
 import time
 
-from eulerpublisher.publisher import EP_PATH
-DATA_PATH = "/tmp/eulerpublisher/cloudimg/data/"
+from eulerpublisher.publisher import EP_PATH, get_temp_dir
+DATA_PATH = get_temp_dir("cloudimg", "data") + os.sep
 RESOURCE_PATH = EP_PATH + "config/cloudimg/resource/"
 AWS_ROLE_POLICY = RESOURCE_PATH + "role-policy.json"
 AWS_TRUST_POLICY = RESOURCE_PATH + "trust-policy.json"
@@ -30,8 +30,11 @@ def _aws_create_policy(bucket=""):
         "arn:aws:s3:::" + bucket,
         "arn:aws:s3:::" + bucket + "/*",
     ]
-    with open(AWS_ROLE_POLICY, "w", encoding="utf-8") as f:
+    policy_dir = get_temp_dir("cloudimg", "aws", create=True)
+    policy_path = os.path.join(policy_dir, "role-policy.json")
+    with open(policy_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
+    return policy_path
 
 def push_aws(arch, version, bucket, region, image):
     # 获取凭证信息
@@ -60,7 +63,7 @@ def push_aws(arch, version, bucket, region, image):
     iam_client = boto3.client("iam", aws_access_key_id=ak, aws_secret_access_key=sk)
 
     # 根据实际信息修改role_policy
-    _aws_create_policy(bucket)
+    role_policy_path = _aws_create_policy(bucket)
 
     # 创建vmimport role
     if not _aws_check_role(iam_client):
@@ -71,7 +74,7 @@ def push_aws(arch, version, bucket, region, image):
         trust_policy.close()
         
     # 写入role policy
-    role_policy = open(AWS_ROLE_POLICY)
+    role_policy = open(role_policy_path)
     try:
         iam_client.put_role_policy(
             RoleName="vmimport",
