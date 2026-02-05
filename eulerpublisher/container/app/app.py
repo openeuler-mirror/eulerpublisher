@@ -23,28 +23,22 @@ def _get_tags(registry, repo, tag, multi):
         for key in env:
             full_repos.append(str(key) + '/' + repo)
     # tag image for all registries
-    tags_bulid = ""
+    tags_build = []
     tags_push = []
 
     for item in full_repos:
-        tags_bulid += "-t " + item + ":" + tag['tag']
-        tags_bulid += " "
+        tags_build.extend(["-t", item + ":" + tag['tag']])
         tags_push.append(item + ":" + tag['tag'])
         if tag['latest']:
-            tags_bulid += "-t " + item + ":latest"
-            tags_bulid += " "
+            tags_build.extend(["-t", item + ":latest"])
             tags_push.append(item + ":latest")
-    return tags_bulid, tags_push
+    return tags_build, tags_push
 
 def _sync_images(source: str, targets=[]):
     try:
         for dest in targets:
             if subprocess.call(
-                "regctl image copy " + \
-                source + \
-                " " + \
-                dest,
-                shell=True
+                ["regctl", "image", "copy", source, dest]
             ) != 0:
                 return pb.PUBLISH_FAILED
     except (OSError, subprocess.CalledProcessError) as err:
@@ -73,7 +67,7 @@ class AppPublisher(pb.Publisher):
         else:
             self.multi_file = ""
 
-        self.tags_build, self.tags_push = _get_tags(
+        self.tags_build_args, self.tags_push = _get_tags(
             registry=registry, repo=repo, tag=tag, multi=self.multi_file
         )
 
@@ -105,17 +99,13 @@ class AppPublisher(pb.Publisher):
                 return pb.PUBLISH_FAILED
             # build images with 'buildx'
             builder = pb.create_builder()
-            ret = subprocess.call(
-                "docker buildx build "
-                + "--platform "
-                + self.platform
-                + " "
-                + self.tags_build
-                + " --"
-                + op
-                + " .",
-                shell=True,
-            )
+            cmd = [
+                "docker", "buildx", "build",
+                "--platform", self.platform,
+            ] + self.tags_build_args + [
+                "--" + op, "."
+            ]
+            ret = subprocess.call(cmd)
             subprocess.call(["docker", "buildx", "stop", builder])
             subprocess.call(["docker", "buildx", "rm", builder])
             if ret != 0:
@@ -135,7 +125,7 @@ class AppPublisher(pb.Publisher):
                 return pb.PUBLISH_FAILED
             # push
             for tag in self.tags_push:
-                if subprocess.call("docker push " + tag, shell=True) != 0:
+                if subprocess.call(["docker", "push", tag]) != 0:
                     return pb.PUBLISH_FAILED
         except (OSError, subprocess.CalledProcessError) as err:
             logger.error(f"[Push] {err}")
@@ -206,13 +196,11 @@ class AppPublisher(pb.Publisher):
         # use `buildx imagetools create` to create
         # a multi-arch image from multiple single-arch images
         try:
-            if subprocess.call(
-                "docker buildx imagetools create " + \
-                " ".join([f"-t {tag}" for tag in default_tags]) + \
-                " " + \
-                " ".join([f"{tag}" for tag in src_tags]),
-                shell=True
-            ) != 0:
+            cmd = ["docker", "buildx", "imagetools", "create"]
+            for tag in default_tags:
+                cmd.extend(["-t", tag])
+            cmd.extend(src_tags)
+            if subprocess.call(cmd) != 0:
                 return pb.PUBLISH_FAILED
         except (OSError, subprocess.CalledProcessError) as err:
             logger.error(f"Failed to create image: {err}")

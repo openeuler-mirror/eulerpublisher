@@ -44,11 +44,10 @@ def init_tags(registry, repo, tag: str, multi):
             env = yaml.safe_load(f)
         for key in env:
             full_repos.append(str(key) + '/' + repo)
-    tags_bulid = ""
+    tags_build = []
     for item in full_repos:
-        tags_bulid += "-t " + item + ":" + tag
-        tags_bulid += " "
-    return tags_bulid
+        tags_build.extend(["-t", item + ":" + tag])
+    return tags_build
 
 
 def get_multi_file(multi):
@@ -77,7 +76,7 @@ def run_build_command(command, workdir=DISTROLESS_CACHE_PATH, dockerfile=DOCKERF
             return pb.PUBLISH_FAILED
         # build images with 'buildx'
         builder = pb.create_builder()
-        ret = subprocess.call(command, shell=True)
+        ret = subprocess.call(command)
         subprocess.call(["docker", "buildx", "stop", builder])
         subprocess.call(["docker", "buildx", "rm", builder])
         if ret != 0:
@@ -117,22 +116,23 @@ class DistrolessPublisher(pb.Publisher):
     def prepare(self):
         for arch in self.arches:
             """
-            rootfs: 
+            rootfs:
             1. The directory of rootfs, such as, `openEuler-distroless-rootfs.amd64`
             2. `rootfs` is ADDed by `config/container/distroless/Dockerfile` to generate final image
             """
             rootfs = "openEuler-distroless-rootfs." + arch.split('/')[-1]
             logger.info(f"|+++++++ output-path{self.workdir}/{rootfs}/ ++++++++|")
-            command = "docker run --rm -v {}:{} {} splitter cut -a {} -r {} -o {} {}".format(
-                self.workdir,
-                self.workdir,
+            command = [
+                "docker", "run", "--rm",
+                "-v", f"{self.workdir}:{self.workdir}",
                 SPLITTER_DOCKER_IMAGE,
-                arch,
-                self.release,
-                f"{self.workdir}/{rootfs}/",
-                self.parts)
+                "splitter", "cut",
+                "-a", arch,
+                "-r", self.release,
+                "-o", f"{self.workdir}/{rootfs}/",
+            ] + self.parts.split()
 
-            ret = subprocess.call(command, shell=True)
+            ret = subprocess.call(command)
             if ret != pb.PUBLISH_SUCCESS:
                 logger.error(f"Failed to generate required slices for {arch}")
                 return pb.PUBLISH_FAILED
@@ -149,10 +149,13 @@ class DistrolessPublisher(pb.Publisher):
         if self.prepare() != pb.PUBLISH_SUCCESS:
             return pb.PUBLISH_FAILED
         # build image from slices
-        build_args = f"--build-arg BASE={self.base}"
-        command = "docker buildx build --platform {} {} {} --{} .".format(
-            ','.join(self.arches), self.tags_build, build_args, op
-        )
+        command = [
+            "docker", "buildx", "build",
+            "--platform", ",".join(self.arches),
+        ] + self.tags_build + [
+            "--build-arg", f"BASE={self.base}",
+            "--" + op, "."
+        ]
         return run_build_command(command, workdir=self.workdir)
 
     def build_and_push(self):
