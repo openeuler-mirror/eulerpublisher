@@ -43,7 +43,7 @@ def push_aws(arch, version, bucket, region, image):
 
     # 上传镜像到S3存储
     try:
-        subprocess.call(
+        ret = subprocess.call(
             [
                 "aws",
                 "s3",
@@ -52,6 +52,11 @@ def push_aws(arch, version, bucket, region, image):
                 "s3://" + bucket + "/" + image,
             ]
         )
+        if ret != 0:
+            raise click.ClickException(
+                "[Push] (Amazon web services) Failed to upload image to "
+                "bucket: %s" % bucket
+            )
     except Exception:
         raise click.ClickException(
             "[Push] (Amazon web services) Failed to upload image to "

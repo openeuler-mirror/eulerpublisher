@@ -132,7 +132,9 @@ class OePublisher(pb.Publisher):
             if pb.download(sha256sum_url) != pb.PUBLISH_SUCCESS:
                 return pb.PUBLISH_FAILED
             logger.info(f"Download {sha256sum} successfully.")
-            subprocess.call(["shasum", "-c", sha256sum])
+            if subprocess.call(["shasum", "-c", sha256sum]) != 0:
+                logger.error(f"SHA256 check failed for {file_name}.")
+                return pb.PUBLISH_FAILED
             # get rootfs
             rootfs = "openEuler-docker-rootfs." + platform + ".tar.xz"
             if os.path.exists(rootfs):
@@ -192,6 +194,7 @@ class OePublisher(pb.Publisher):
                 return pb.PUBLISH_FAILED
         except (OSError, subprocess.CalledProcessError) as err:
             logger.error(f"[Build and Push] {err}")
+            return pb.PUBLISH_FAILED
         logger.info("[Build and Push] finished")
         return pb.PUBLISH_SUCCESS
 
