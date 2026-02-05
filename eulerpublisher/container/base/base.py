@@ -29,16 +29,15 @@ def _get_tags(repository, version, multi):
         for key in env:
             repo_list.append(str(env[key][2]))
     # tag image for all registries
-    tags = ""
+    tags = []
+    with open(TAGS, "r") as f:
+        data = yaml.safe_load(f)
     for repo in repo_list:
-        tags += "-t " + repo + ":" + version.lower()
-        with open(TAGS, "r") as f:
-            data = yaml.safe_load(f)
-        version = version.upper()
-        if version in data:
-            for tag in data[version]:
-                tags += " -t " + repo + ":" + str(tag)
-        tags += " "
+        tags.extend(["-t", repo + ":" + version.lower()])
+        version_upper = version.upper()
+        if version_upper in data:
+            for tag in data[version_upper]:
+                tags.extend(["-t", repo + ":" + str(tag)])
     return tags
 
 def _get_latest_version():
@@ -180,10 +179,13 @@ class OePublisher(pb.Publisher):
             builder = pb.create_builder()
             # build and push docker image
             os.chdir(self.version)
-            ret = subprocess.call(
-                f"docker buildx build --platform {self.platforms} {self.tags} --push .",
-                shell=True
-            )
+            cmd = [
+                "docker", "buildx", "build",
+                "--platform", self.platforms,
+            ] + self.tags + [
+                "--push", "."
+            ]
+            ret = subprocess.call(cmd)
             subprocess.call(["docker", "buildx", "stop", builder])
             subprocess.call(["docker", "buildx", "rm", builder])
             if ret != 0:

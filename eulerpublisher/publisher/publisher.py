@@ -87,22 +87,26 @@ def create_builder():
     return builder
 
 
+def _docker_login(username, password, registry):
+    """Login to a single docker registry via stdin to avoid shell injection."""
+    proc = subprocess.Popen(
+        ["docker", "login", "--username", username, "--password-stdin", registry],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    proc.communicate(input=password.encode("utf-8"))
+    return proc.returncode
+
+
 def login_registry(registry, multi):
     # login single registry
     if not multi:
-        if (
-            subprocess.call(
-                "echo %s | docker login --username %s "
-                "--password-stdin %s"
-                % (
-                    os.environ["LOGIN_PASSWORD"],
-                    os.environ["LOGIN_USERNAME"],
-                    registry,
-                ),
-                shell=True,
-            )
-            != 0
-        ):
+        if _docker_login(
+            os.environ["LOGIN_USERNAME"],
+            os.environ["LOGIN_PASSWORD"],
+            registry,
+        ) != 0:
             return PUBLISH_FAILED
         return PUBLISH_SUCCESS
     # login multiple registries in registry.yaml
@@ -117,14 +121,7 @@ def login_registry(registry, multi):
     for key in env:
         username = os.environ[str(env[key][0])]
         password = os.environ[str(env[key][1])]
-        if (
-            subprocess.call(
-                "echo %s | docker login --username %s "
-                "--password-stdin %s" % (password, username, str(key)),
-                shell=True,
-            )
-            != 0
-        ):
+        if _docker_login(username, password, str(key)) != 0:
             return PUBLISH_FAILED
     return PUBLISH_SUCCESS
 
