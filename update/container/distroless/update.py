@@ -6,10 +6,10 @@ import os
 
 import yaml
 
-from eulerpublisher.publisher import logger
+from eulerpublisher.publisher import logger, get_temp_dir
 
 OFFICIAL_NAMESPACE = "openeuler"
-DEFAULT_WORKDIR = "/tmp/eulerpublisher"
+DEFAULT_WORKDIR = get_temp_dir()
 
 
 def _publish_app_image(file: str, name, tag):

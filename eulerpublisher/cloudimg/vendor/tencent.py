@@ -4,10 +4,12 @@ import click
 import subprocess
 import json
 
+from eulerpublisher.publisher import get_temp_dir
+
 from tencentcloud.common.credential import Credential as TencentCredential
 from tencentcloud.cvm.v20170312 import cvm_client, models
 
-DATA_PATH = "/tmp/eulerpublisher/cloudimg/data/"
+DATA_PATH = get_temp_dir("cloudimg", "data") + os.sep
 
 def push_tencent(arch, version, bucket, region, image):
     # 获取凭证信息

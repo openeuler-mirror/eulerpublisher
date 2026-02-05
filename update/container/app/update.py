@@ -8,7 +8,7 @@ import sys
 import os
 import platform
 
-from eulerpublisher.publisher import logger, DEFAULT_APP_ARCHES
+from eulerpublisher.publisher import logger, DEFAULT_APP_ARCHES, get_temp_dir
 import format
 
 REPOSITORY_REQUEST_URL = (
@@ -18,7 +18,7 @@ MAX_REQUEST_COUNT = 20
 SUCCESS_CODE = 200
 TEST_NAMESPACE = "openeulertest"
 OFFICIAL_NAMESPACE = "openeuler"
-DEFAULT_WORKDIR = "/tmp/eulerpublisher/ci/container/"
+DEFAULT_WORKDIR = get_temp_dir("ci", "container") + os.sep
 
 
 def _request(method: str, url: str, body=None, timeout=MAX_REQUEST_COUNT):

@@ -3,11 +3,13 @@ import os
 import click
 import subprocess
 
+from eulerpublisher.publisher import get_temp_dir
+
 from huaweicloudsdkcore.auth.credentials import BasicCredentials as HuaweiCredential
 from huaweicloudsdkims.v2.region.ims_region import ImsRegion
 from huaweicloudsdkims.v2 import *
 
-DATA_PATH = "/tmp/eulerpublisher/cloudimg/data/"
+DATA_PATH = get_temp_dir("cloudimg", "data") + os.sep
 
 def push_huawei(arch, version, bucket, region, image):
     # 获取凭证信息
