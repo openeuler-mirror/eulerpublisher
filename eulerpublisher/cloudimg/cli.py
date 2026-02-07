@@ -11,83 +11,70 @@ def group():
     name="prepare", help="Prepare original materials for building generic cloud image"
 )
 @click.option(
-    "-v",
-    "--version",
+    "-c",
+    "--config",
     required=True,
-    help="The version of cloud image, " "such as 22.03-LTS, 24.03-LTS-SP2, etc."
+    help="Path to the YAML configuration file."
 )
-@click.option(
-    "-a",
-    "--arch",
-    required=True,
-    help="The architecture of cloud image, " "limited to `x86_64` or `aarch64`."
-)
-def prepare(version, arch):
-    obj = CloudimgPublisher(version=version, arch=arch)
+def prepare(config):
+    obj = CloudimgPublisher(config_file=config)
     obj.prepare()
 
 
 @group.command(name="build", help="Build cloud image.")
 @click.option(
+    "-c",
+    "--config",
+    required=True,
+    help="Path to the YAML configuration file."
+)
+@click.option(
     "-t",
     "--target",
     required=True,
-    help="The target cloud provider, " "limited to `huawei`, `alibaba`, or `tencent`."
+    help="The target cloud provider, "
+    "limited to `huawei`, `alibaba`, `tencent`, `aws` or `azure`."
 )
-@click.option(
-    "-v",
-    "--version",
-    required=True,
-    help="The version of cloud image, " "such as 22.03-LTS, 24.03-LTS-SP2, etc."
-)
-@click.option(
-    "-a",
-    "--arch",
-    required=True,
-    help="The architecture of cloud image, " "limited to `x86_64` or `aarch64`."
-)
-@click.option("-p", "--rpmlist", help="The packages you want to install.")
-def build(target, version, arch, rpmlist):
-    obj = CloudimgPublisher(target=target, version=version, arch=arch, rpmlist=rpmlist)
+def build(config, target):
+    obj = CloudimgPublisher(config_file=config, target=target)
     obj.build()
+
 
 @group.command(name="push", help="Push generic cloud image to cloud provider.")
 @click.option(
+    "-c",
+    "--config",
+    required=True,
+    help="Path to the YAML configuration file."
+)
+@click.option(
     "-t",
     "--target",
     required=True,
-    help="The target cloud provider, " "limited to `huawei`, `alibaba`, or `tencent`."
+    help="The target cloud provider, "
+    "limited to `huawei`, `alibaba`, `tencent` or `aws`."
 )
-@click.option(
-    "-v",
-    "--version",
-    required=True,
-    help="The version of cloud image, " "such as 22.03-LTS, 24.03-LTS-SP2, etc."
-)
-@click.option(
-    "-a",
-    "--arch",
-    required=True,
-    help="The architecture of cloud image, " "limited to `x86_64` or `aarch64`."
-)
-@click.option(
-    "-b",
-    "--bucket",
-    required=True,
-    help="The bucket on target cloud provider."
-)
-@click.option(
-    "-r",
-    "--region",
-    required=True,
-    help="The region on target cloud provider, " "such as `cn-north-1`, `ap-shenzhen`, etc."
-)
-@click.option(
-    "-f",
-    "--file",
-    required=True,
-    help="The image file."
-)
-def push(target, version, arch, bucket, region, file):
-    obj = CloudimgPublisher(target=target, version=version, arch=arch, bucket=bucket, region=region, image=file)
+def push(config, target):
+    obj = CloudimgPublisher(config_file=config, target=target)
     obj.push()
+
+
+@group.command(
+    name="publish", help="One-click prepare, build and push cloud image."
+)
+@click.option(
+    "-c",
+    "--config",
+    required=True,
+    help="Path to the YAML configuration file."
+)
+@click.option(
+    "-t",
+    "--target",
+    required=True,
+    help="The target cloud provider, "
+    "limited to `huawei`, `alibaba`, `tencent` or `aws`."
+)
+def publish(config, target):
+    obj = CloudimgPublisher(config_file=config, target=target)
+    obj.publish()

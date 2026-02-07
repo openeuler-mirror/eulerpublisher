@@ -1,0 +1,31 @@
+# openEuler 云镜像发布配置
+# 用户修改此文件后，通过 eulerpublisher cloudimg 命令使用
+
+# 镜像版本号，如 24.03-LTS-SP2 等
+version: "24.03-LTS-SP2"
+
+# 镜像架构类型，限定 x86_64 或 aarch64
+arch: "x86_64"
+
+# 自定义预安装软件包列表文件路径（可选，留空使用默认包列表）
+rpmlist: ""
+
+# 各云厂商推送配置（仅需配置实际使用的云厂商，不用的可删除）
+targets:
+  huawei:
+    ak: "your-huaweicloud-ak"
+    sk: "your-huaweicloud-sk"
+    bucket: "your-obs-bucket"
+    region: "cn-north-4"
+
+  alibaba:
+    ak: "your-alibabacloud-ak"
+    sk: "your-alibabacloud-sk"
+    bucket: "your-oss-bucket"
+    region: "cn-beijing"
+
+  aws:
+    ak: "your-aws-ak"
+    sk: "your-aws-sk"
+    bucket: "openeuler"
+    region: "ap-southeast-2"

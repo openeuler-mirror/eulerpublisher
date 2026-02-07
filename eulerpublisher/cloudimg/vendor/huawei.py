@@ -11,13 +11,15 @@ from huaweicloudsdkims.v2 import *
 
 DATA_PATH = get_temp_dir("cloudimg", "data") + os.sep
 
-def push_huawei(arch, version, bucket, region, image):
-    # 获取凭证信息
-    ak = os.getenv("HUAWEICLOUD_SDK_AK")
-    sk = os.getenv("HUAWEICLOUD_SDK_SK")
+def push_huawei(arch, version, ak, sk, bucket, region, image):
+    from eulerpublisher.publisher import logger
+
+    # 凭证信息
     ims_cred = HuaweiCredential(ak, sk)
 
     # 上传镜像到OBS存储
+    endpoint = "obs." + region + ".myhuaweicloud.com"
+    logger.info("[Push] (Huawei cloud) Uploading image to OBS bucket: %s" % bucket)
     try:
         ret = subprocess.call(
             [
@@ -25,6 +27,9 @@ def push_huawei(arch, version, bucket, region, image):
                 "cp",
                 DATA_PATH + "output/" + image,
                 "obs://" + bucket + "/" + image,
+                "-i", ak,
+                "-k", sk,
+                "-e", endpoint,
             ]
         )
         if ret != 0:
@@ -37,7 +42,8 @@ def push_huawei(arch, version, bucket, region, image):
             "\n[Push] (Huawei cloud) Failed to upload image to "
             "bucket: %s" % bucket
         )
-    
+    logger.info("[Push] (Huawei cloud) Upload completed successfully")
+
     # 创建IMS客户端对象
     ims_client = ImsClient.new_builder() \
                 .with_credentials(ims_cred) \
@@ -56,5 +62,5 @@ def push_huawei(arch, version, bucket, region, image):
         resp = ims_client.create_image(req)
     except Exception as err:
         raise click.ClickException(
-            "\n[Push] (Huawei cloud) " + str(err)
+            "\n[Push] (Huawei cloud)" + str(err)
         )

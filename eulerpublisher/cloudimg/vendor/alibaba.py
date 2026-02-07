@@ -13,24 +13,25 @@ from alibabacloud_tea_util.client import Client as UtilClient
 
 DATA_PATH = get_temp_dir("cloudimg", "data") + os.sep
 
-def push_alibaba(arch, version, bucket, region, image):
-    # 获取凭证信息
-    ak = os.getenv("ALIBABACLOUD_SDK_AK")
-    sk = os.getenv("ALIBABACLOUD_SDK_SK")
+def push_alibaba(arch, version, ak, sk, bucket, region, image):
+    # 凭证信息
     config = open_api_models.Config(ak, sk)
     config.endpoint = "ecs." + region + ".aliyuncs.com"
     
     # 上传镜像到OSS存储
-    try:
-        subprocess.call(
-            [
-                "ossutil",
-                "cp",
-                DATA_PATH + "output/" + image,
-                "oss://" + bucket + "/" + image,
-            ]
-        )
-    except Exception:
+    oss_endpoint = "oss-" + region + ".aliyuncs.com"
+    ret = subprocess.call(
+        [
+            "ossutil",
+            "cp",
+            DATA_PATH + "output/" + image,
+            "oss://" + bucket + "/" + image,
+            "-i", ak,
+            "-k", sk,
+            "-e", oss_endpoint,
+        ]
+    )
+    if ret != 0:
         raise click.ClickException(
             "\n[Push] (Alibaba cloud) Failed to upload image to "
             "bucket: %s" % bucket
