@@ -2,21 +2,22 @@
 echo -e "\n[STAGE] Prepare environment"
 sudo apt-get update
 sudo apt-get install -y tar xz-utils qemu shunit2
-if ! docker info > /dev/null 2>&1; then
+if [ docker info > /dev/null 2>&1 ]; then
+    systemctl start docker
     echo "starting docker..."
-    sudo systemctl start docker
 fi
 
-echo -e "\n[STAGE] Install eulerpublisher"
-if [[which eulerpublisher > /dev/null 2>&1]]; then
-    sudo pip3 uninstall -y eulerpublisher
+if [ which eulerpublisher > /dev/null 2>&1 ]; then
+    sudo pip3 uninstall -y eulerpublisher > /dev/null 2>&1
 fi
 
 rm -rf eulerpublisher
 git clone https://gitee.com/openeuler/eulerpublisher.git
 cd eulerpublisher
-pip3 install -r ./requirements.txt
-python3 setup.py install
+pip3 uninstall -y eulerpublisher > /dev/null 2>&1 || true
+rm -rf /usr/local/lib/python3.*/site-packages/eulerpublisher*
+pip3 install -r ./requirements.txt > /dev/null 2>&1
+pip3 install . > /dev/null 2>&1
 
 set -e
 # update list

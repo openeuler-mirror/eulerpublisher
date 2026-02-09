@@ -29,8 +29,10 @@ cd ../
 rm -rf eulerpublisher/
 git clone https://gitcode.com/openeuler/eulerpublisher.git
 cd eulerpublisher
+pip3 uninstall -y eulerpublisher > /dev/null 2>&1 || true
+rm -rf /usr/local/lib/python3.*/site-packages/eulerpublisher*
 pip3 install -r ./requirements.txt > /dev/null 2>&1
-python3 setup.py install > /dev/null 2>&1
+pip3 install . > /dev/null 2>&1
 
 sudo -E python3 update/container/app/update.py \
 	-pr ${prid} \
