@@ -10,12 +10,12 @@ docker volume rm $(docker volume ls -q) --force > /dev/null 2>&1 || true
 docker system df
 echo "清理完成!"
 
-if [ docker info > /dev/null 2>&1 ]; then
+if ! docker info > /dev/null 2>&1; then
     systemctl start docker
     echo "starting docker..."
 fi
 
-if [ which eulerpublisher > /dev/null 2>&1 ]; then
+if command -v eulerpublisher > /dev/null 2>&1; then
     sudo pip3 uninstall -y eulerpublisher > /dev/null 2>&1
 fi
 

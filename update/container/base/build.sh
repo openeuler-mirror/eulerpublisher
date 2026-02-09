@@ -8,7 +8,7 @@ if ! docker info > /dev/null 2>&1; then
 fi
 
 echo -e "\n[STAGE] Install eulerpublisher"
-if [[which eulerpublisher > /dev/null 2>&1]]; then
+if command -v eulerpublisher > /dev/null 2>&1; then
     sudo pip3 uninstall -y eulerpublisher
 fi
 
