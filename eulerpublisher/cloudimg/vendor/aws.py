@@ -36,12 +36,13 @@ def _aws_create_policy(bucket=""):
         json.dump(data, f, indent=2)
     return policy_path
 
-def push_aws(arch, version, bucket, region, image):
-    # 获取凭证信息
-    ak = os.getenv("AWS_SDK_AK")
-    sk = os.getenv("AWS_SDK_SK")
+def push_aws(arch, version, ak, sk, bucket, region, image):
 
     # 上传镜像到S3存储
+    env = os.environ.copy()
+    env["AWS_ACCESS_KEY_ID"] = ak
+    env["AWS_SECRET_ACCESS_KEY"] = sk
+    env["AWS_DEFAULT_REGION"] = region
     try:
         ret = subprocess.call(
             [
@@ -50,7 +51,8 @@ def push_aws(arch, version, bucket, region, image):
                 "cp",
                 DATA_PATH + "output/" + image,
                 "s3://" + bucket + "/" + image,
-            ]
+            ],
+            env=env
         )
         if ret != 0:
             raise click.ClickException(

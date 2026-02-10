@@ -3,11 +3,13 @@ import click
 import subprocess
 import os
 import platform
+import yaml
 import wget
 
 import eulerpublisher.publisher.publisher as pb
 from eulerpublisher.publisher import EP_PATH, logger, get_temp_dir
 from eulerpublisher.publisher import OPENEULER_REPO
+
 from eulerpublisher.cloudimg.vendor.huawei import push_huawei
 from eulerpublisher.cloudimg.vendor.tencent import push_tencent
 from eulerpublisher.cloudimg.vendor.alibaba import push_alibaba
@@ -19,32 +21,57 @@ RESOURCE_PATH = EP_PATH + "config/cloudimg/resource/"
 DEFAULT_RPMLIST = RESOURCE_PATH + "install_packages.txt"
 CLOUD_INIT_CONFIG = RESOURCE_PATH + "openeuler.cfg"
 
+
 class CloudimgPublisher(pb.Publisher):
-    def __init__(self, target="", version="", arch="", rpmlist="", bucket="", region="", image=""):
+    def __init__(self, config_file, target=""):
+        # 加载 YAML 配置文件
+        self.config = self._load_config(config_file)
         # 目标云厂商
         self.target = target
         # 镜像版本号
-        self.version = version.upper()
+        self.version = self.config["version"].upper()
         # 镜像架构类型
+        arch = self.config["arch"]
         if arch != str(platform.machine()):
             raise TypeError(
                 "Unsupported architecture "
                 + arch
-                + "while current host architecture is "
+                + " while current host architecture is "
                 + str(platform.machine())
             )
         self.arch = arch
-        # 获取要预安装的软件包列表，不显示指定时安装默认包
+        # 获取要预安装的软件包列表，不指定时安装默认包
+        rpmlist = self.config.get("rpmlist", "")
         if not rpmlist:
             self.rpmlist = DEFAULT_RPMLIST
         else:
             self.rpmlist = os.path.abspath(rpmlist)
-        # 存储桶
-        self.bucket = bucket
-        # 地域
-        self.region = region
-        # 镜像文件
-        self.image = image
+        # 从 targets 配置中读取目标云厂商的 ak、sk、bucket 和 region
+        self.ak = ""
+        self.sk = ""
+        self.bucket = ""
+        self.region = ""
+        if target and "targets" in self.config and target in self.config["targets"]:
+            target_cfg = self.config["targets"][target]
+            self.ak = target_cfg.get("ak", "")
+            self.sk = target_cfg.get("sk", "")
+            self.bucket = target_cfg.get("bucket", "")
+            self.region = target_cfg.get("region", "")
+
+    def _load_config(self, config_file):
+        with open(config_file, "r") as f:
+            return yaml.safe_load(f)
+
+    def _detect_image(self):
+        """自动检测 output 目录下最新的镜像文件"""
+        output_dir = DATA_PATH + "output/"
+        if not os.path.exists(output_dir):
+            return None
+        files = [f for f in os.listdir(output_dir) if os.path.isfile(output_dir + f)]
+        if not files:
+            return None
+        files.sort(key=lambda f: os.path.getmtime(output_dir + f), reverse=True)
+        return files[0]
 
     def prepare(self):
         if not os.path.exists(DATA_PATH):
@@ -98,10 +125,13 @@ class CloudimgPublisher(pb.Publisher):
         return pb.PUBLISH_SUCCESS
 
     def push(self):
-        if not os.path.exists(DATA_PATH + "output/" + self.image):
-            logger.error("[Push] Failed to find cloud image '%s'." % self.image)
+        # 自动检测最新的镜像文件
+        image = self._detect_image()
+        if not image:
+            logger.error("[Push] Failed to find cloud image in output directory.")
             return pb.PUBLISH_FAILED
-        
+        logger.info("[Push] Detected image file: '%s'" % image)
+
         push_functions = {
             "huawei": push_huawei,
             "tencent": push_tencent,
@@ -109,10 +139,17 @@ class CloudimgPublisher(pb.Publisher):
             "aws": push_aws,
         }
         if self.target in push_functions:
-            push_functions[self.target](self.arch, self.version, self.bucket, self.region, self.image)
+            push_functions[self.target](self.arch, self.version, self.ak, self.sk, self.bucket, self.region, image)
         else:
-            logger.error("[Push] Unsupported cloud provider.")
+            logger.error("[Push] Unsupported cloud provider '%s'." % self.target)
             return pb.PUBLISH_FAILED
 
         logger.info("[Push] Finished.")
         return pb.PUBLISH_SUCCESS
+
+    def publish(self):
+        if self.prepare() != pb.PUBLISH_SUCCESS:
+            return pb.PUBLISH_FAILED
+        if self.build() != pb.PUBLISH_SUCCESS:
+            return pb.PUBLISH_FAILED
+        return self.push()

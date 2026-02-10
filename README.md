@@ -47,72 +47,82 @@ tar -xvf shunit2.tar.gz -C /usr/share/shunit2 --strip-components=1
 
 ### 1. 发布云镜像
 使用EulerPublisher在本地执行机上进行云镜像构建，定制的镜像符合大多数主流云厂商镜像发布的要求，可用于发布。
--  **步骤1** 、基础构建准备
-```
-eulerpublisher cloudimg prepare -v {VERSION} -a {ARCH}
-```
-此命令中所有参数均需显式指定，`-v`是构建目标镜像的openEuler版本号，`-a`指定构建目标镜像的架构类型，目前仅支持`aarch64`或`x86_64`，
-该步骤实现的功能是从openEuler Repo获取基础镜像，用于下一步定制。
--  **步骤2** 、构建云镜像
-```
-eulerpublisher cloudimg build -t {TARGET} -v {VERSION} -a {ARCH}
-```
-此命令中`{TARGET}`指定公有云厂商，其余参数作用与步骤1命令中参数作用一致。
-执行此命令后，会在执行机`/tmp/eulerpublisher/cloudimg/gen/output/`目录下生成一个命名为`openEuler-{VERSION}-{ARCH}-{TIME}.qcow2`的目标镜像（例如：`openEuler-22.03-LTS-SP2-x86_64-20230802_010324.qcow2`），该镜像满足目前大多数主流公有云厂商云市场镜像发布的技术要求。
--  **步骤3** 、上传云镜像
 
-执行本步之前，需要预先使用公有云厂商提供的命令行工具进行配置，完成身份认证，配置信息如下：
-```
-# 华为云 OBS存储命令行工具
-$ obsutil config -interactive
-- Please input your ak:
-- <key_id>
-- Please input your sk:
-- <secret_key>
-- Please input your endpoint:
-- <endpoint>
+#### 配置文件
 
-# 阿里云 OSS存储命令行工具
-$ ossutil config
-- Please input your endpoint:
-- <endpoint>
-- Please input your accessKeySecret:
-- <secret_key>
-- Please input your accessKeyID:
-- <key_id>
+云镜像发布采用统一的 YAML 配置文件 `config/cloudimg/cloudimg.yaml`，用户只需修改此文件即可完成所有参数配置：
 
-# 腾讯云 COS存储命令行工具
-$ coscli config init
-- Input Your Secret ID:
-- <key_id><endpoint>
-- Input Your Secret Key: 
-- <secret_key>
-- Input Bucket's Endpoint:
-- <endpoint>
+```yaml
+# openEuler 云镜像发布配置
+version: "24.03-LTS-SP2"  # openEuler版本号
+arch: "x86_64"             # 架构类型，限定 x86_64 或 aarch64
+rpmlist: ""                # 自定义软件包列表（可选，留空使用默认）
 
-# AWS S3存储命令行工具
-$ aws configure
-- AWS Access Key ID: <key_id>
-- AWS Secret Access Key: <secret_key>
-- Default region name: <region>
+# 各云厂商推送配置（仅需配置实际使用的云厂商）
+targets:
+  huawei:
+    ak: "your-huaweicloud-ak"
+    sk: "your-huaweicloud-sk"
+    bucket: "your-obs-bucket"
+    region: "cn-north-4"
+
+  alibaba:
+    ak: "your-alibabacloud-ak"
+    sk: "your-alibabacloud-sk"
+    bucket: "your-oss-bucket"
+    region: "cn-beijing"
+
+  aws:
+    ak: "your-aws-ak"
+    sk: "your-aws-sk"
+    bucket: "your-s3-bucket"
+    region: "us-east-1"
 ```
-其中，`key_id`和`secret_key`是一对用于访问认证的密钥对，`endpoint`是存储桶的接入点。有关访问密钥的详细信息，请参考[华为云管理访问密钥](https://support.huaweicloud.com/usermanual-ca/ca_01_0003.html)，[阿里云管理访问密钥](https://help.aliyun.com/zh/ram/user-guide/create-an-accesskey-pair)，[腾讯云管理访问密钥](https://cloud.tencent.com/document/product/598/40488)，[AWS管理访问密钥](https://docs.aws.amazon.com/zh_cn/IAM/latest/UserGuide/id_credentials_access-keys.html?icmpid=docs_iam_console#Using_CreateAccessKey)。
+
+**配置说明**：
+- `version`: 构建目标镜像的 openEuler 版本号，如 `22.03-LTS`、`24.03-LTS-SP2` 等
+- `arch`: 构建目标镜像的架构类型，目前仅支持 `x86_64` 或 `aarch64`
+- `rpmlist`: 自定义预安装软件包列表文件路径（可选，留空使用默认列表）
+- `targets`: 各云厂商推送配置，包括 `ak`（Access Key ID）、`sk`（Secret Access Key）、`bucket`（存储桶名称）、`region`（地域）
+
+有关访问密钥的详细信息，请参考：
+- [华为云管理访问密钥](https://support.huaweicloud.com/usermanual-ca/ca_01_0003.html)
+- [阿里云管理访问密钥](https://help.aliyun.com/zh/ram/user-guide/create-an-accesskey-pair)
+- [AWS 管理访问密钥](https://docs.aws.amazon.com/zh_cn/IAM/latest/UserGuide/id_credentials_access-keys.html)
+
+#### 使用方式
+
+**一键发布（推荐）**
+
+完成配置文件编辑后，使用 `publish` 命令一键完成 prepare + build + push 全流程：
+
+```bash
+eulerpublisher cloudimg publish -c config/cloudimg/cloudimg.yaml -t huawei
 ```
-export HUAWEICLOUD_SDK_AK="key_id"
-export HUAWEICLOUD_SDK_SK="secret_key"
-export ALIBABACLOUD_SDK_AK="key_id"
-export ALIBABACLOUD_SDK_SK="secret_key"
-export TENCENTCLOUD_SDK_AK="key_id"
-export TENCENTCLOUD_SDK_SK="secret_key"
-export AWS_SDK_AK="key_id"
-export AWS_SDK_SK="secret_key"
+
+其中 `-t` 参数指定目标云厂商，可选值：`huawei`、`alibaba`、`aws`。
+
+**分步执行**
+
+如需分步执行，可使用以下命令：
+
+-  **步骤1：准备基础镜像**
+```bash
+eulerpublisher cloudimg prepare -c config/cloudimg/cloudimg.yaml
 ```
-完成上述步骤后，可执行如下命令上传云镜像
+该步骤从 openEuler Repo 下载基础镜像并解压，用于下一步定制。
+
+-  **步骤2：构建云镜像**
+```bash
+eulerpublisher cloudimg build -c config/cloudimg/cloudimg.yaml -t huawei
 ```
-eulerpublisher cloudimg push -t {TARGET} -v {VERSION} -a {ARCH} -r {REGION} -b {BUCKET} -f {FILE}
+执行此命令后，会在执行机 `/tmp/eulerpublisher/cloudimg/data/output/` 目录下生成目标镜像（例如：`openEuler-24.03-LTS-SP2-x86_64-20230802_010324.qcow2`），该镜像满足大多数主流公有云厂商云市场发布要求。
+
+-  **步骤3：上传云镜像**
+```bash
+eulerpublisher cloudimg push -c config/cloudimg/cloudimg.yaml -t huawei
 ```
-此命令中`{REGION}`指定地域，`{BUCKET}`指定存储桶，`{FILE}`指定云镜像文件，其余参数作用与步骤2命令中参数作用一致。
-执行此命令后，会将云镜像文件上传至公有云厂商对应地域的存储桶，同时还会在对应地域的镜像列表生成一个命名为`openEuler-{VERSION}-{ARCH}`的最终镜像。
+该步骤会自动检测最新构建的镜像文件，上传至配置文件中指定的云厂商存储桶，并在对应地域的镜像列表生成命名为 `openEuler-{VERSION}-{ARCH}` 的最终镜像。
 
 ### 2. 发布容器镜像
 

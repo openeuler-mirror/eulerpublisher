@@ -11,23 +11,22 @@ from tencentcloud.cvm.v20170312 import cvm_client, models
 
 DATA_PATH = get_temp_dir("cloudimg", "data") + os.sep
 
-def push_tencent(arch, version, bucket, region, image):
-    # 获取凭证信息
-    ak = os.getenv("TENCENTCLOUD_SDK_AK")
-    sk = os.getenv("TENCENTCLOUD_SDK_SK")
+def push_tencent(arch, version, ak, sk, bucket, region, image):
+    # 凭证信息
     cvm_cred = TencentCredential(ak, sk)
 
     # 上传镜像到COS存储
-    try:
-        subprocess.call(
-            [
-                "coscli",
-                "cp",
-                DATA_PATH + "output/" + image,
-                "cos://" + bucket + "/" + image,
-            ]
-        )
-    except Exception:
+    ret = subprocess.call(
+        [
+            "coscli",
+            "cp",
+            DATA_PATH + "output/" + image,
+            "cos://" + bucket + "/" + image,
+            "-i", ak,
+            "-k", sk,
+        ]
+    )
+    if ret != 0:
         raise click.ClickException(
             "\n[Push] (Tencent cloud) Failed to upload image to "
             "bucket: %s" % bucket
