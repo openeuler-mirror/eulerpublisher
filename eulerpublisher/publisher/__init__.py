@@ -1,6 +1,8 @@
 # coding=utf-8
+import atexit
 import logging
 import os
+import shutil
 import tempfile
 
 
@@ -13,12 +15,22 @@ OPENEULER_DOCKERFILE = "https://gitee.com/openeuler/openeuler-docker-images/raw/
 if os.environ.get('EP_LOG_DIR'):
     EP_LOG_DIR = os.environ.get('EP_LOG_DIR')
 
+_auto_tmp = False
 if os.environ.get("EP_TMP_DIR"):
     EP_TMP_DIR = os.environ.get("EP_TMP_DIR")
 else:
     EP_TMP_DIR = tempfile.mkdtemp(prefix="eulerpublisher_")
+    _auto_tmp = True
 
 os.makedirs(EP_TMP_DIR, exist_ok=True)
+
+
+def _cleanup_tmp():
+    if _auto_tmp and os.path.isdir(EP_TMP_DIR):
+        shutil.rmtree(EP_TMP_DIR, ignore_errors=True)
+
+
+atexit.register(_cleanup_tmp)
 
 paths = [
     os.path.dirname(os.__file__) + "/" + "../../etc/eulerpublisher/",
