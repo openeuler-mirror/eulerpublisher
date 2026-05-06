@@ -12,7 +12,7 @@ if [ which eulerpublisher > /dev/null 2>&1 ]; then
 fi
 
 rm -rf eulerpublisher
-git clone https://gitee.com/openeuler/eulerpublisher.git
+git clone https://gitcode.com/openeuler/eulerpublisher.git
 cd eulerpublisher
 pip3 uninstall -y eulerpublisher > /dev/null 2>&1 || true
 rm -rf /usr/local/lib/python3.*/site-packages/eulerpublisher*
