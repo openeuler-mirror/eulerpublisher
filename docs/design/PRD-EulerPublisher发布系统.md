@@ -1,7 +1,7 @@
 # EulerPublisher 发布系统产品需求分析
 
 **状态:** 已发布
-**作者:** openEuler Infra SIG
+**作者:** Zheng Zhenyu
 **日期:** 2024-05-26
 **版本:** 1.0
 

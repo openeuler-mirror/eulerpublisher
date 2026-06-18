@@ -1,7 +1,7 @@
 # EulerPublisher 发布系统技术设计文档
 
 **状态:** 已发布
-**作者:** openEuler Infra SIG
+**作者:** Zheng Zhenyu
 **日期:** 2026-05-26
 **版本:** 1.0
 
