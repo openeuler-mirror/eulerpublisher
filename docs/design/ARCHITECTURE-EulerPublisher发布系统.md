@@ -349,7 +349,7 @@ flowchart LR
         K["腾讯云 COS + CVM"]
         L["AWS S3 + EC2 + IAM"]
         M["Docker Hub / Quay.io<br/>容器仓库"]
-        N["gitee.com<br/>Dockerfile 源码"]
+        N["atomgit.com<br/>Dockerfile 源码"]
     end
 
     A -.->|HTTPS| H
@@ -380,7 +380,7 @@ flowchart LR
 | 本地 → 远程 | repo.openeuler.org:443 | HTTPS | 下载基础镜像 / rootfs |
 | 本地 → 远程 | 云厂商对象存储 / API | HTTPS | 上传云镜像 + 注册 |
 | 本地 → 远程 | 容器仓库 Registry | HTTPS | 推送容器镜像 |
-| 本地 → 远程 | gitee.com:443 | HTTPS | 下载 Dockerfile 源码 |
+| 本地 → 远程 | atomgit.com:443 | HTTPS | 下载 Dockerfile 源码 |
 
 ### 2.5 场景视图（Scenarios / Use Cases）
 
@@ -641,7 +641,7 @@ obj.copy_and_push(source)
 
 #### 3.2.3 Distroless 镜像 ([container/distroless/distroless.py](file:///Users/zhengzhenyu/work/codes/gitcode/eulerpublisher/eulerpublisher/container/distroless/distroless.py))
 
-**DistrolessPublisher** 与 openEuler [splitter](https://gitee.com/openeuler/splitter) 工具集成：
+**DistrolessPublisher** 与 openEuler [splitter](https://atomgit.com/openeuler/splitter) 工具集成：
 
 ```
 prepare():
@@ -926,7 +926,7 @@ EulerPublisher 的性能瓶颈主要在于：
 | **Docker 可用性** | `start_docker()` 循环检测直至成功或超时 |
 | **文件完整性** | `OePublisher.prepare()` 下载后执行 `shasum -c` 校验 |
 | **云厂商 target 格式** | `push()` 中检查 target 是否在 `push_functions` 字典中 |
-| **Dockerfile 存在性** | 基础镜像 Dockerfile 不存在时自动从 gitee 下载最新版 |
+| **Dockerfile 存在性** | 基础镜像 Dockerfile 不存在时自动从 atomgit 下载最新版 |
 
 ### 7.3 异常处理
 
@@ -1084,8 +1084,8 @@ eulerpublisher
 
 - **产品需求文档:** [PRD-EulerPublisher发布系统.md](./PRD-EulerPublisher发布系统.md)
 - 社区规范:
-  - [oEEP-0005 openEuler 官方容器镜像发布流程](https://gitee.com/openeuler/TC/blob/master/oEEP/oEEP-0005%20openEuler%E5%AE%98%E6%96%B9%E5%AE%B9%E5%99%A8%E9%95%9C%E5%83%8F%E5%8F%91%E5%B8%83%E6%B5%81%E7%A8%8B.md)
-  - [oEEP-0014 openEuler AI 容器镜像软件栈规范](https://gitee.com/openeuler/TC/blob/master/oEEP/oEEP-0014%20openEuler%20AI%E5%AE%B9%E5%99%A8%E9%95%9C%E5%83%8F%E8%BD%AF%E4%BB%B6%E6%A0%88%E8%A7%84%E8%8C%83.md)
+  - [oEEP-0005 openEuler 官方容器镜像发布流程](https://atomgit.com/openeuler/TC/blob/master/oEEP/oEEP-0005%20openEuler%E5%AE%98%E6%96%B9%E5%AE%B9%E5%99%A8%E9%95%9C%E5%83%8F%E5%8F%91%E5%B8%83%E6%B5%81%E7%A8%8B.md)
+  - [oEEP-0014 openEuler AI 容器镜像软件栈规范](https://atomgit.com/openeuler/TC/blob/master/oEEP/oEEP-0014%20openEuler%20AI%E5%AE%B9%E5%99%A8%E9%95%9C%E5%83%8F%E8%BD%AF%E4%BB%B6%E6%A0%88%E8%A7%84%E8%8C%83.md)
 - 上游工具:
-  - [splitter](https://gitee.com/openeuler/splitter) — openEuler 软件包切分工具
+  - [splitter](https://atomgit.com/openeuler/splitter) — openEuler 软件包切分工具
   - [shUnit2](https://github.com/kward/shunit2) — Shell 单元测试框架
