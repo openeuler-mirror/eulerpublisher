@@ -128,7 +128,7 @@ eulerpublisher cloudimg push -c config/cloudimg/cloudimg.yaml -t huawei
 
 #### 基础容器镜像
 
-本部分介绍如何使用EulerPublisher发布多平台（支持amd64和arm64）openeuler基础容器镜像(区分于应用镜像，如AI容器镜像)。该功能可用于EulerPublisher从[openEuler](https://repo.openeuler.org)官方获取容器镜像，进行二次定制后发布至第三方仓库，镜像制品的tag严格遵守[oEEP-0005](https://gitee.com/openeuler/TC/blob/master/oEEP/oEEP-0005%20openEuler官方容器镜像发布流程.md)的规范。
+本部分介绍如何使用EulerPublisher发布多平台（支持amd64和arm64）openeuler基础容器镜像(区分于应用镜像，如AI容器镜像)。该功能可用于EulerPublisher从[openEuler](https://repo.openeuler.org)官方获取容器镜像，进行二次定制后发布至第三方仓库，镜像制品的tag严格遵守[oEEP-0005](https://atomgit.com/openeuler/TC/blob/master/oEEP/oEEP-0005%20openEuler官方容器镜像发布流程.md)的规范。
 -  **步骤1** 、获取构建基础镜像的必要文件
 
 ```
@@ -193,7 +193,7 @@ registry-2:
 
 #### 应用容器镜像
 
-openEuler应用容器镜像是在基础容器镜像之上包含特定场景的应用软件，向用户提供开箱即用的开发、使用体验，例如AI容器镜像（见[oEEP-0014](https://gitee.com/openeuler/TC/blob/master/oEEP/oEEP-0014%20openEuler%20AI容器镜像软件栈规范.md)）。
+openEuler应用容器镜像是在基础容器镜像之上包含特定场景的应用软件，向用户提供开箱即用的开发、使用体验，例如AI容器镜像（见[oEEP-0014](https://atomgit.com/openeuler/TC/blob/master/oEEP/oEEP-0014%20openEuler%20AI容器镜像软件栈规范.md)）。
 ```
 # 应用容器镜像发布
 eulerpublisher container app publish -a aarch64 -p openeuler/cann -f Dockerfile -t cann7.0.0.aplha002-oe2203sp2
@@ -207,7 +207,7 @@ eulerpublisher container app check -n {APP_NAME} -s {SCRIPT.sh} -t {APP_TAG}
 #### Distroless镜像
 openEuler distroless镜像是安装指定的应用软件列表，满足在特定场景下程序运行的软件集合。不安装无用软件和文件，如包管理器yum、命令行工具bash等一些程序运行无关的工具。
 
-EulerPublisher通过与[splitter](https://gitee.com/openeuler/splitter)集成，使用openEuler软件包切分后的slice作为构建应用镜像的基础材料来生成openEuler distroless镜像。
+EulerPublisher通过与[splitter](https://atomgit.com/openeuler/splitter)集成，使用openEuler软件包切分后的slice作为构建应用镜像的基础材料来生成openEuler distroless镜像。
 
 ```
 # distroless镜像发布
