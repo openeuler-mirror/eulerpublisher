@@ -41,7 +41,7 @@ sudo env "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
 sudo /usr/bin/python3 -c 'import eulerpublisher' 2>/dev/null \
     || { echo "ERROR: root 的 python3 里 import eulerpublisher 失败" >&2; exit 1; }
 
-sudo env "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
+sudo -E env "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
     /usr/bin/python3 update/container/app/update.py \
     -pr "${prid}" \
     -sr "${repo}" \
